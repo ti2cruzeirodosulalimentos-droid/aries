@@ -1,9 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, User } from "lucide-react";
-import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+import { ChevronLeft, ChevronRight, Plus, Search, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useAlunosList } from "@/lib/queries/alunos";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CardListSkeleton } from "@/components/ui/list-skeleton";
@@ -13,6 +11,8 @@ export const Route = createFileRoute("/_authenticated/alunos/")({
   component: AlunosList,
 });
 
+const PAGE_SIZE = 12;
+
 const STATUS_STYLES: Record<string, string> = {
   ativo: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   inativo: "bg-muted text-muted-foreground border-border",
@@ -20,25 +20,23 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function AlunosList() {
-  const { user } = useAuth();
   const [q, setQ] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
-  const { data: alunos, isLoading } = useQuery({
-    queryKey: ["alunos", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("alunos")
-        .select("id, full_name, photo_url, status, goal, phone, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Busca no servidor com debounce (300ms); qualquer nova busca volta à página 1.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(q);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
 
-  const filtered = (alunos ?? []).filter((a) =>
-    a.full_name.toLowerCase().includes(q.toLowerCase()),
-  );
+  const { data, isLoading, isPlaceholderData } = useAlunosList({ search, page, pageSize: PAGE_SIZE });
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -47,7 +45,7 @@ function AlunosList() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Gestão</p>
           <h1 className="mt-1 font-display text-3xl font-semibold">Alunos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {alunos?.length ?? 0} aluno{(alunos?.length ?? 0) === 1 ? "" : "s"} cadastrado{(alunos?.length ?? 0) === 1 ? "" : "s"}
+            {total} aluno{total === 1 ? "" : "s"} cadastrado{total === 1 ? "" : "s"}
           </p>
         </div>
         <Link
@@ -70,49 +68,75 @@ function AlunosList() {
 
       {isLoading ? (
         <CardListSkeleton count={6} />
-      ) : filtered.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
           icon={User}
-          title={`Nenhum aluno ${q ? "encontrado" : "ainda"}`}
-          description={q ? "Tente outro termo de busca." : "Comece cadastrando o seu primeiro aluno."}
-          action={!q ? { label: "Cadastrar primeiro aluno", to: "/alunos/novo", icon: Plus } : undefined}
+          title={`Nenhum aluno ${search ? "encontrado" : "ainda"}`}
+          description={search ? "Tente outro termo de busca." : "Comece cadastrando o seu primeiro aluno."}
+          action={!search ? { label: "Cadastrar primeiro aluno", to: "/alunos/novo", icon: Plus } : undefined}
         />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((a) => (
-            <li key={a.id}>
-              <Link
-                to="/alunos/$id"
-                params={{ id: a.id }}
-                className="luxury-card group flex items-center gap-4 rounded-2xl p-4 transition hover:border-primary/40"
-              >
-                <div className="size-14 shrink-0 overflow-hidden rounded-full gold-border bg-muted">
-                  {a.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={a.photo_url} alt={a.full_name} className="size-full object-cover" />
-                  ) : (
-                    <div className="grid size-full place-items-center font-display text-lg gold-text">
-                      {a.full_name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{a.full_name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {a.goal || a.phone || "—"}
-                  </div>
-                </div>
-                <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
-                    STATUS_STYLES[a.status] ?? STATUS_STYLES.inativo
-                  }`}
+        <>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy={isPlaceholderData}>
+            {rows.map((a) => (
+              <li key={a.id}>
+                <Link
+                  to="/alunos/$id"
+                  params={{ id: a.id }}
+                  className="luxury-card group flex items-center gap-4 rounded-2xl p-4 transition hover:border-primary/40"
                 >
-                  {a.status}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                  <div className="size-14 shrink-0 overflow-hidden rounded-full gold-border bg-muted">
+                    {a.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.photo_url} alt={a.full_name} className="size-full object-cover" />
+                    ) : (
+                      <div className="grid size-full place-items-center font-display text-lg gold-text">
+                        {a.full_name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold">{a.full_name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{a.goal || a.phone || "—"}</div>
+                  </div>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
+                      STATUS_STYLES[a.status] ?? STATUS_STYLES.inativo
+                    }`}
+                  >
+                    {a.status}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {totalPages > 1 && (
+            <nav className="flex items-center justify-center gap-4 pt-2" aria-label="Paginação">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="inline-flex size-9 items-center justify-center rounded-lg gold-border transition hover:border-primary/50 disabled:opacity-40"
+                aria-label="Página anterior"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <span className="text-sm text-muted-foreground">
+                Página <span className="font-semibold text-foreground">{page}</span> de {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || isPlaceholderData}
+                className="inline-flex size-9 items-center justify-center rounded-lg gold-border transition hover:border-primary/50 disabled:opacity-40"
+                aria-label="Próxima página"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </nav>
+          )}
+        </>
       )}
     </div>
   );
