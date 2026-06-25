@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 // Cron-disparado: percorre campanhas ativas e gera registros em mensagens_enviadas
 // para alunos cujo plan_expires_at = hoje + dias_antes.
@@ -6,8 +7,18 @@ export const Route = createFileRoute("/api/public/hooks/lembrete-vencimento")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Rate limit por IP (defesa contra abuso da rota pública).
+        const rl = rateLimit(`hook:lembrete:${clientIp(request)}`, 12, 60_000);
+        if (!rl.ok) {
+          return new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": String(rl.retryAfter) },
+          });
+        }
+        // Segredo DEDICADO (não a anon key, que é pública e seria abusável).
+        const secret = process.env.LEMBRETE_HOOK_SECRET;
         const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+        if (!secret || !apikey || apikey !== secret) {
           return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
         }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
