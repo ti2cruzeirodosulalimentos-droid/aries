@@ -34,6 +34,7 @@ export function useUpsertTemplate() {
         const { error } = await supabase.from("mensagens_templates").update(fields).eq("id", t.id);
         if (error) throw error;
       } else {
+        if (!t.owner_id) throw new Error("owner_id obrigatório para criar template");
         const { error } = await supabase
           .from("mensagens_templates")
           .insert({ owner_id: t.owner_id, ...fields });
