@@ -14,6 +14,7 @@ export const qk = {
   exercicios: {
     all: ["exercicios"] as const,
     list: () => ["exercicios", "list"] as const,
+    picker: ["exercicios", "picker"] as const, // biblioteca completa p/ seletor
   },
   avaliacoes: {
     all: ["avaliacoes"] as const,
@@ -24,6 +25,8 @@ export const qk = {
     all: ["treinos"] as const,
     byAluno: (alunoId: string) => ["treinos", "aluno", alunoId] as const,
     detail: (id: string) => ["treinos", "detail", id] as const,
+    exercicios: (treinoId: string) => ["treinos", "exercicios", treinoId] as const,
+    exec: (treinoId: string) => ["treinos", "exec", treinoId] as const, // itens c/ mídia p/ execução
   },
   agenda: {
     all: ["agenda"] as const,

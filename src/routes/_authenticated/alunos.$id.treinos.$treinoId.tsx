@@ -1,8 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { ArrowLeft, Plus, Trash2, GripVertical, Save, Search, X, PlayCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  useTreino,
+  useTreinoExercicios,
+  useSalvarTreino,
+  useAdicionarExercicio,
+  useAtualizarItem,
+  useRemoverItem,
+  useMoverItem,
+  useExerciciosPicker,
+  type TreinoExercicioRow as TE,
+} from "@/lib/queries/treinos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,107 +42,18 @@ export const Route = createFileRoute("/_authenticated/alunos/$id/treinos/$treino
   component: TreinoEditor,
 });
 
-type TE = {
-  id: string;
-  ordem: number;
-  series: number | null;
-  repeticoes: string | null;
-  carga: string | null;
-  descanso_seg: number | null;
-  metodo: string | null;
-  observacoes: string | null;
-  exercicio: { id: string; nome: string; grupo_muscular: string; equipamento: string | null } | null;
-};
-
 function TreinoEditor() {
   const { id, treinoId } = Route.useParams();
-  const qc = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const { data: treino } = useQuery({
-    queryKey: ["treino", treinoId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("treinos").select("*").eq("id", treinoId).single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: treino } = useTreino(treinoId);
+  const { data: itens, isLoading } = useTreinoExercicios(treinoId);
 
-  const { data: itens, isLoading } = useQuery({
-    queryKey: ["treino-exercicios", treinoId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("treino_exercicios")
-        .select("id, ordem, series, repeticoes, carga, descanso_seg, metodo, observacoes, exercicio:exercicios(id, nome, grupo_muscular, equipamento)")
-        .eq("treino_id", treinoId)
-        .order("ordem");
-      if (error) throw error;
-      return (data ?? []) as TE[];
-    },
-  });
-
-  const salvarTreino = useMutation({
-    mutationFn: async (patch: any) => {
-      const { error } = await (supabase as any).from("treinos").update(patch).eq("id", treinoId);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Treino atualizado"); qc.invalidateQueries({ queryKey: ["treino", treinoId] }); qc.invalidateQueries({ queryKey: ["treinos", id] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const adicionarEx = useMutation({
-    mutationFn: async (exercicioId: string) => {
-      const ordem = (itens?.length ?? 0) + 1;
-      const { error } = await (supabase as any).from("treino_exercicios").insert({
-        treino_id: treinoId, exercicio_id: exercicioId, ordem, series: 3, repeticoes: "10-12", descanso_seg: 60,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["treino-exercicios", treinoId] }),
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const atualizarItem = useMutation({
-    mutationFn: async ({ itemId, patch }: { itemId: string; patch: any }) => {
-      // Bounds: séries 1-20, repetições texto curto, carga 0-1000kg, descanso 0-600s
-      const clean: any = { ...patch };
-      if ("series" in clean) clean.series = Math.min(20, Math.max(1, Number(clean.series) || 1));
-      if ("carga" in clean && clean.carga != null && clean.carga !== "") {
-        const c = Number(clean.carga);
-        clean.carga = Number.isFinite(c) ? Math.min(1000, Math.max(0, c)) : null;
-      }
-      if ("descanso_seg" in clean && clean.descanso_seg != null && clean.descanso_seg !== "") {
-        const d = Number(clean.descanso_seg);
-        clean.descanso_seg = Number.isFinite(d) ? Math.min(600, Math.max(0, d)) : null;
-      }
-      if (typeof clean.repeticoes === "string") clean.repeticoes = clean.repeticoes.trim().slice(0, 30);
-      if (typeof clean.observacoes === "string") clean.observacoes = clean.observacoes.trim().slice(0, 500);
-      const { error } = await (supabase as any).from("treino_exercicios").update(clean).eq("id", itemId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["treino-exercicios", treinoId] }),
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
-  });
-
-  const removerItem = useMutation({
-    mutationFn: async (itemId: string) => {
-      const { error } = await (supabase as any).from("treino_exercicios").delete().eq("id", itemId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["treino-exercicios", treinoId] }),
-  });
-
-  const moverItem = useMutation({
-    mutationFn: async ({ itemId, direction }: { itemId: string; direction: -1 | 1 }) => {
-      if (!itens) return;
-      const idx = itens.findIndex((i) => i.id === itemId);
-      const swap = itens[idx + direction];
-      if (!swap) return;
-      await (supabase as any).from("treino_exercicios").update({ ordem: swap.ordem }).eq("id", itemId);
-      await (supabase as any).from("treino_exercicios").update({ ordem: itens[idx].ordem }).eq("id", swap.id);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["treino-exercicios", treinoId] }),
-  });
+  const salvarTreino = useSalvarTreino(treinoId, id);
+  const adicionarEx = useAdicionarExercicio(treinoId);
+  const atualizarItem = useAtualizarItem(treinoId);
+  const removerItem = useRemoverItem(treinoId);
+  const moverItem = useMoverItem(treinoId);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-1">
@@ -142,7 +62,16 @@ function TreinoEditor() {
       </Link>
 
       {treino ? (
-        <TreinoHeader treino={treino} onSave={(p) => salvarTreino.mutate(p)} saving={salvarTreino.isPending} />
+        <TreinoHeader
+          treino={treino}
+          onSave={(p) =>
+            salvarTreino.mutate(p, {
+              onSuccess: () => toast.success("Treino atualizado"),
+              onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
+            })
+          }
+          saving={salvarTreino.isPending}
+        />
       ) : null}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -184,7 +113,7 @@ function TreinoEditor() {
               item={it}
               first={idx === 0}
               last={idx === itens.length - 1}
-              onPatch={(patch) => atualizarItem.mutate({ itemId: it.id, patch })}
+              onPatch={(patch) => atualizarItem.mutate({ itemId: it.id, patch }, { onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar") })}
               onRemove={() => { if (confirm("Remover exercício?")) removerItem.mutate(it.id); }}
               onMove={(direction) => moverItem.mutate({ itemId: it.id, direction })}
             />
@@ -196,7 +125,7 @@ function TreinoEditor() {
         </div>
       )}
 
-      {pickerOpen ? <ExercicioPicker onClose={() => setPickerOpen(false)} onPick={(exId) => { adicionarEx.mutate(exId); setPickerOpen(false); }} /> : null}
+      {pickerOpen ? <ExercicioPicker onClose={() => setPickerOpen(false)} onPick={(exId) => { adicionarEx.mutate(exId, { onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao adicionar") }); setPickerOpen(false); }} /> : null}
     </div>
   );
 }
@@ -309,14 +238,7 @@ function ExercicioPicker({ onClose, onPick }: { onClose: () => void; onPick: (id
   const [q, setQ] = useState("");
   const [grupo, setGrupo] = useState<string>("");
 
-  const { data } = useQuery({
-    queryKey: ["exercicios-picker"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("exercicios").select("id, nome, grupo_muscular, equipamento, gif_url, imagem_url, nivel").order("grupo_muscular").order("nome");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { data } = useExerciciosPicker();
 
   const grupos = useMemo(() => Array.from(new Set((data ?? []).map((e: any) => e.grupo_muscular))) as string[], [data]);
   const filtered = (data ?? []).filter((e: any) => {

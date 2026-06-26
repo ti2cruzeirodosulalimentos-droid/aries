@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, RotateCcw, Check, Dumbbell, Timer } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useTreino, useTreinoExec } from "@/lib/queries/treinos";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -10,52 +9,12 @@ export const Route = createFileRoute("/_authenticated/alunos/$id/treinos/$treino
   component: ExecutarTreino,
 });
 
-type Item = {
-  id: string;
-  ordem: number;
-  series: number | null;
-  repeticoes: string | null;
-  carga: string | null;
-  descanso_seg: number | null;
-  metodo: string | null;
-  observacoes: string | null;
-  exercicio: {
-    id: string;
-    nome: string;
-    grupo_muscular: string;
-    equipamento: string | null;
-    gif_url: string | null;
-    imagem_url: string | null;
-    instrucoes: string | null;
-    nivel: string | null;
-  } | null;
-};
-
 function ExecutarTreino() {
   const { id, treinoId } = Route.useParams();
   const navigate = useNavigate();
 
-  const { data: treino } = useQuery({
-    queryKey: ["treino", treinoId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("treinos").select("*").eq("id", treinoId).single();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: itens, isLoading } = useQuery({
-    queryKey: ["treino-exec", treinoId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("treino_exercicios")
-        .select("id, ordem, series, repeticoes, carga, descanso_seg, metodo, observacoes, exercicio:exercicios(id, nome, grupo_muscular, equipamento, gif_url, imagem_url, instrucoes, nivel)")
-        .eq("treino_id", treinoId)
-        .order("ordem");
-      if (error) throw error;
-      return (data ?? []) as Item[];
-    },
-  });
+  const { data: treino } = useTreino(treinoId);
+  const { data: itens, isLoading } = useTreinoExec(treinoId);
 
   const [idx, setIdx] = useState(0);
   const [serie, setSerie] = useState(1);
