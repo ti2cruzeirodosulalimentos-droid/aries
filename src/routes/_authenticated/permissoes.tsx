@@ -1,11 +1,8 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState, useEffect } from "react";
 import { Shield, Save, Eye, Plus, Pencil, Trash2, Check, X as XIcon, UserCog, UserX } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAllUsers, useUserPerms, useSavePerms, useSetRole, useDisableAccount } from "@/lib/queries/permissoes";
 import { usePermissions, type Modulo, type Acao } from "@/lib/permissions";
-import { adminDisableAccount } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -45,43 +42,11 @@ function emptyMap(): PermMap {
 
 function PermissoesPage() {
   const { isAdmin, loading: permsLoading } = usePermissions();
-  const qc = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<PermMap>(emptyMap());
 
-  const { data: users } = useQuery({
-    queryKey: ["all-users"],
-    enabled: isAdmin,
-    queryFn: async () => {
-      const [{ data: profiles }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name"),
-        supabase.from("user_roles").select("user_id, role"),
-      ]);
-      const rolesByUser = new Map<string, string[]>();
-      (roles ?? []).forEach((r: { user_id: string; role: string }) => {
-        const arr = rolesByUser.get(r.user_id) ?? [];
-        arr.push(r.role);
-        rolesByUser.set(r.user_id, arr);
-      });
-      return (profiles ?? []).map((p: { id: string; full_name: string | null }) => ({
-        id: p.id,
-        full_name: p.full_name ?? "Sem nome",
-        roles: rolesByUser.get(p.id) ?? [],
-      }));
-    },
-  });
-
-  const { data: userPerms } = useQuery({
-    queryKey: ["user-perms", selected],
-    enabled: !!selected,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("permissoes")
-        .select("modulo, can_view, can_create, can_edit, can_delete")
-        .eq("user_id", selected!);
-      return (data ?? []) as PermRow[];
-    },
-  });
+  const { data: users } = useAllUsers(isAdmin);
+  const { data: userPerms } = useUserPerms(selected);
 
   useEffect(() => {
     if (!userPerms) return;
@@ -92,61 +57,44 @@ function PermissoesPage() {
     setDraft(map);
   }, [userPerms]);
 
-  const saveMut = useMutation({
-    mutationFn: async () => {
-      if (!selected) return;
-      const rows = MODULOS.map((m) => ({ user_id: selected, ...draft[m.key] }));
-      const { error } = await supabase.from("permissoes").upsert(rows, { onConflict: "user_id,modulo" });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Permissões atualizadas");
-      qc.invalidateQueries({ queryKey: ["user-perms", selected] });
-      qc.invalidateQueries({ queryKey: ["my-permissions"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const toggleRoleAdmin = useMutation({
-    mutationFn: async ({ userId, makeAdmin }: { userId: string; makeAdmin: boolean }) => {
-      if (makeAdmin) {
-        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
-        if (error && !error.message.includes("duplicate")) throw error;
-      } else {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Perfil atualizado");
-      qc.invalidateQueries({ queryKey: ["all-users"] });
-    },
-  });
-
-  const setRole = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "personal" | "aluno" }) => {
-      const { error } = await supabase.rpc("admin_set_role", { _target: userId, _role: role });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Papel atualizado");
-      qc.invalidateQueries({ queryKey: ["all-users"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const disableFn = useServerFn(adminDisableAccount);
-  const disableAccount = useMutation({
-    mutationFn: async (userId: string) => disableFn({ data: { targetUserId: userId } }),
-    onSuccess: () => {
-      toast.success("Conta desativada. O login foi bloqueado, os dados foram preservados.");
-      setSelected(null);
-      qc.invalidateQueries({ queryKey: ["all-users"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const saveMut = useSavePerms(selected);
+  const setRole = useSetRole();
+  const disableAccount = useDisableAccount();
 
   const selectedUser = useMemo(() => users?.find((u) => u.id === selected) ?? null, [users, selected]);
+
+  function salvar() {
+    saveMut.mutate(
+      MODULOS.map((m) => draft[m.key]),
+      {
+        onSuccess: () => toast.success("Permissões atualizadas"),
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
+  }
+
+  function definirPapel(role: "admin" | "personal" | "aluno") {
+    if (!selectedUser) return;
+    setRole.mutate(
+      { userId: selectedUser.id, role },
+      {
+        onSuccess: () => toast.success("Papel atualizado"),
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
+  }
+
+  function excluirConta() {
+    if (!selectedUser) return;
+    if (!confirm(`Excluir conta de ${selectedUser.full_name}?\n\nO login será bloqueado permanentemente, mas todos os dados (avaliações, treinos, vendas) serão preservados.`)) return;
+    disableAccount.mutate(selectedUser.id, {
+      onSuccess: () => {
+        toast.success("Conta desativada. O login foi bloqueado, os dados foram preservados.");
+        setSelected(null);
+      },
+      onError: (e: Error) => toast.error(e.message),
+    });
+  }
 
   if (permsLoading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
@@ -247,13 +195,13 @@ function PermissoesPage() {
                   <h2 className="font-display text-xl">{selectedUser.full_name}</h2>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button size="sm" variant="outline" onClick={() => setRole.mutate({ userId: selectedUser.id, role: "aluno" })}>
+                  <Button size="sm" variant="outline" onClick={() => definirPapel("aluno")}>
                     Definir como Aluno
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setRole.mutate({ userId: selectedUser.id, role: "personal" })}>
+                  <Button size="sm" variant="outline" onClick={() => definirPapel("personal")}>
                     Promover a Personal
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setRole.mutate({ userId: selectedUser.id, role: "admin" })}>
+                  <Button size="sm" variant="outline" onClick={() => definirPapel("admin")}>
                     Promover a Admin
                   </Button>
                 </div>
@@ -324,15 +272,12 @@ function PermissoesPage() {
                 <Button
                   variant="outline"
                   className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                  onClick={() => {
-                    if (confirm(`Excluir conta de ${selectedUser.full_name}?\n\nO login será bloqueado permanentemente, mas todos os dados (avaliações, treinos, vendas) serão preservados.`))
-                      disableAccount.mutate(selectedUser.id);
-                  }}
+                  onClick={excluirConta}
                   disabled={disableAccount.isPending}
                 >
                   <UserX className="size-4" /> {disableAccount.isPending ? "Excluindo..." : "Excluir conta"}
                 </Button>
-                <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+                <Button onClick={salvar} disabled={saveMut.isPending}>
                   <Save className="size-4" /> {saveMut.isPending ? "Salvando..." : "Salvar alterações"}
                 </Button>
               </div>

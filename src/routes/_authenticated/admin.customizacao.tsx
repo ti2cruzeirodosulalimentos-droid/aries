@@ -1,10 +1,8 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, Download, Loader2, Settings2, Tag, Calculator, FileText } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +12,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  upsertCustomField, deleteCustomField,
-  upsertCategoria, deleteCategoria,
-  upsertProtocolo, deleteProtocolo,
-  exportBackup,
-} from "@/lib/customizacao.functions";
+  useCustomFields, useUpsertCustomField, useDeleteCustomField,
+  useCategorias, useUpsertCategoria, useDeleteCategoria,
+  useProtocolos, useUpsertProtocolo, useDeleteProtocolo,
+} from "@/lib/queries/customizacao";
+import { exportBackup } from "@/lib/customizacao.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/customizacao")({
   component: CustomizacaoPage,
@@ -56,29 +54,27 @@ function CustomizacaoPage() {
 }
 
 function CustomFieldsPanel({ contexto }: { contexto: "anamnese" | "avaliacao" }) {
-  const qc = useQueryClient();
-  const upsert = useServerFn(upsertCustomField);
-  const remove = useServerFn(deleteCustomField);
-  const { data: items = [] } = useQuery({
-    queryKey: ["custom_fields", contexto],
-    queryFn: async () => {
-      const { data } = await supabase.from("custom_fields").select("*").eq("contexto", contexto).order("ordem");
-      return data ?? [];
-    },
-  });
+  const { data: items = [] } = useCustomFields(contexto);
+  const saveM = useUpsertCustomField(contexto);
+  const delM = useDeleteCustomField(contexto);
 
   const [draft, setDraft] = useState<any>({ label: "", tipo: "texto", opcoes: [], obrigatorio: false, ordem: 0, ativo: true, subgrupo: "" });
 
-  const saveM = useMutation({
-    mutationFn: async (payload: any) => upsert({ data: { ...payload, contexto } }),
-    onSuccess: () => { toast.success("Salvo"); qc.invalidateQueries({ queryKey: ["custom_fields", contexto] }); setDraft({ label: "", tipo: "texto", opcoes: [], obrigatorio: false, ordem: 0, ativo: true, subgrupo: "" }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-  const delM = useMutation({
-    mutationFn: async (id: string) => remove({ data: { id } }),
-    onSuccess: () => { toast.success("Removido"); qc.invalidateQueries({ queryKey: ["custom_fields", contexto] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
+  function salvar() {
+    saveM.mutate(draft, {
+      onSuccess: () => {
+        toast.success("Salvo");
+        setDraft({ label: "", tipo: "texto", opcoes: [], obrigatorio: false, ordem: 0, ativo: true, subgrupo: "" });
+      },
+      onError: (e: any) => toast.error(e.message),
+    });
+  }
+  function remover(id: string) {
+    delM.mutate(id, {
+      onSuccess: () => toast.success("Removido"),
+      onError: (e: any) => toast.error(e.message),
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -111,7 +107,7 @@ function CustomFieldsPanel({ contexto }: { contexto: "anamnese" | "avaliacao" })
           )}
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.obrigatorio} onCheckedChange={(c) => setDraft({ ...draft, obrigatorio: !!c })} /> Obrigatório</label>
         </div>
-        <Button disabled={!draft.label || saveM.isPending} onClick={() => saveM.mutate(draft)}>
+        <Button disabled={!draft.label || saveM.isPending} onClick={salvar}>
           {saveM.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Adicionar campo
         </Button>
       </div>
@@ -125,7 +121,7 @@ function CustomFieldsPanel({ contexto }: { contexto: "anamnese" | "avaliacao" })
               <p className="font-medium truncate">{it.label} {it.obrigatorio && <span className="text-destructive">*</span>}</p>
               <p className="text-xs text-muted-foreground">{it.tipo} {it.subgrupo ? `· ${it.subgrupo}` : ""}</p>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => delM.mutate(it.id)}><Trash2 className="size-4 text-destructive" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => remover(it.id)}><Trash2 className="size-4 text-destructive" /></Button>
           </div>
         ))}
       </div>
@@ -134,33 +130,23 @@ function CustomFieldsPanel({ contexto }: { contexto: "anamnese" | "avaliacao" })
 }
 
 function CategoriasPanel() {
-  const qc = useQueryClient();
-  const upsert = useServerFn(upsertCategoria);
-  const remove = useServerFn(deleteCategoria);
-  const { data: items = [] } = useQuery({
-    queryKey: ["exercicio_categorias"],
-    queryFn: async () => {
-      const { data } = await supabase.from("exercicio_categorias").select("*").order("ordem");
-      return data ?? [];
-    },
-  });
+  const { data: items = [] } = useCategorias();
+  const saveM = useUpsertCategoria();
+  const delM = useDeleteCategoria();
   const [draft, setDraft] = useState<any>({ nome: "", cor: "#3B82F6", icone: "", ordem: 0, ativo: true });
-  const saveM = useMutation({
-    mutationFn: async (p: any) => upsert({ data: p }),
-    onSuccess: () => { toast.success("Salvo"); qc.invalidateQueries({ queryKey: ["exercicio_categorias"] }); setDraft({ nome: "", cor: "#3B82F6", icone: "", ordem: 0, ativo: true }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-  const delM = useMutation({
-    mutationFn: async (id: string) => remove({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["exercicio_categorias"] }),
-  });
+  function salvar() {
+    saveM.mutate(draft, {
+      onSuccess: () => { toast.success("Salvo"); setDraft({ nome: "", cor: "#3B82F6", icone: "", ordem: 0, ativo: true }); },
+      onError: (e: any) => toast.error(e.message),
+    });
+  }
   return (
     <div className="space-y-4">
       <div className="luxury-card p-4 grid gap-3 md:grid-cols-[1fr_120px_140px_auto] items-end">
         <div><Label>Nome da categoria</Label><Input value={draft.nome} onChange={(e) => setDraft({ ...draft, nome: e.target.value })} placeholder="Funcional ARIÉS" /></div>
         <div><Label>Cor</Label><Input type="color" value={draft.cor} onChange={(e) => setDraft({ ...draft, cor: e.target.value })} /></div>
         <div><Label>Ícone (emoji)</Label><Input value={draft.icone} onChange={(e) => setDraft({ ...draft, icone: e.target.value })} placeholder="💪" /></div>
-        <Button disabled={!draft.nome || saveM.isPending} onClick={() => saveM.mutate(draft)}><Plus className="size-4" /> Adicionar</Button>
+        <Button disabled={!draft.nome || saveM.isPending} onClick={salvar}><Plus className="size-4" /> Adicionar</Button>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         {items.map((it: any) => (
@@ -176,23 +162,16 @@ function CategoriasPanel() {
 }
 
 function ProtocolosPanel() {
-  const qc = useQueryClient();
-  const upsert = useServerFn(upsertProtocolo);
-  const remove = useServerFn(deleteProtocolo);
-  const { data: items = [] } = useQuery({
-    queryKey: ["protocolos_avaliacao"],
-    queryFn: async () => {
-      const { data } = await supabase.from("protocolos_avaliacao").select("*").order("created_at");
-      return data ?? [];
-    },
-  });
+  const { data: items = [] } = useProtocolos();
+  const saveM = useUpsertProtocolo();
+  const delM = useDeleteProtocolo();
   const [draft, setDraft] = useState<any>({ nome: "", descricao: "", genero: "ambos", dobras_necessarias: [], formula: { tipo: "jp-like", constantes: { a: 1.10938, b: 0.0008267, c: 0.0000016, d: 0.0002574 } }, ativo: true });
-  const saveM = useMutation({
-    mutationFn: async (p: any) => upsert({ data: p }),
-    onSuccess: () => { toast.success("Protocolo salvo"); qc.invalidateQueries({ queryKey: ["protocolos_avaliacao"] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-  const delM = useMutation({ mutationFn: async (id: string) => remove({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["protocolos_avaliacao"] }) });
+  function salvar() {
+    saveM.mutate(draft, {
+      onSuccess: () => toast.success("Protocolo salvo"),
+      onError: (e: any) => toast.error(e.message),
+    });
+  }
 
   const DOBRAS_OPCOES = ["peitoral", "axilar_media", "triceps", "subescapular", "abdominal", "suprailiaca", "coxa"];
 
@@ -239,7 +218,7 @@ function ProtocolosPanel() {
             </div>
           </div>
         </div>
-        <Button disabled={!draft.nome || saveM.isPending} onClick={() => saveM.mutate(draft)}><Save className="size-4" /> Salvar protocolo</Button>
+        <Button disabled={!draft.nome || saveM.isPending} onClick={salvar}><Save className="size-4" /> Salvar protocolo</Button>
       </div>
 
       <div className="grid gap-2">
