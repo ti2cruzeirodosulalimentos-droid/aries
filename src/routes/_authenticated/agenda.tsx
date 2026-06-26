@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
+import {
+  useAgendaEventos,
+  useUpsertEvento,
+  useDeleteEvento,
+  useAlunosMin,
+  type Evento,
+} from "@/lib/queries/agenda";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,12 +20,6 @@ export const Route = createFileRoute("/_authenticated/agenda")({
   head: () => ({ meta: [{ title: "Agenda — ARIÉS" }] }),
   component: AgendaPage,
 });
-
-type Evento = {
-  id: string; titulo: string; tipo: string; inicio: string; fim: string;
-  status: string; aluno_id: string | null; personal_id: string; observacao: string | null;
-  alunos: { full_name: string } | null;
-};
 
 const TIPO_COLORS: Record<string, string> = {
   avaliacao: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
@@ -33,7 +32,6 @@ const TIPO_COLORS: Record<string, string> = {
 function AgendaPage() {
   const { user } = useAuth();
   const { isAluno } = usePermissions();
-  const qc = useQueryClient();
   const [view, setView] = useState<"dia" | "semana" | "mes">("semana");
   const [ref, setRef] = useState(() => new Date());
   const [editing, setEditing] = useState<Partial<Evento> | null>(null);
@@ -55,28 +53,17 @@ function AgendaPage() {
     return { start: s, end: e };
   }, [ref, view]);
 
-  const { data: eventos = [] } = useQuery({
-    queryKey: ["agenda", user?.id, range.start.toISOString(), range.end.toISOString()],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agenda_eventos")
-        .select("*, alunos(full_name)")
-        .gte("inicio", range.start.toISOString())
-        .lte("inicio", range.end.toISOString())
-        .order("inicio");
-      if (error) throw error;
-      return (data ?? []) as Evento[];
-    },
-  });
+  const { data: eventos = [] } = useAgendaEventos(
+    user?.id,
+    range.start.toISOString(),
+    range.end.toISOString(),
+  );
 
-  const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("agenda_eventos").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Evento removido"); qc.invalidateQueries({ queryKey: ["agenda"] }); },
-  });
+  const del = useDeleteEvento();
+  function handleDelete(id: string) {
+    if (!confirm("Remover?")) return;
+    del.mutate(id, { onSuccess: () => toast.success("Evento removido") });
+  }
 
   function shift(delta: number) {
     const d = new Date(ref);
@@ -121,9 +108,9 @@ function AgendaPage() {
       {view === "mes" ? (
         <MonthGrid ref_={ref} eventos={eventos} onOpen={(e) => setEditing(e)} />
       ) : view === "semana" ? (
-        <WeekList start={range.start} eventos={eventos} onOpen={(e) => setEditing(e)} onDelete={(id) => confirm("Remover?") && del.mutate(id)} />
+        <WeekList start={range.start} eventos={eventos} onOpen={(e) => setEditing(e)} onDelete={handleDelete} />
       ) : (
-        <DayList eventos={eventos} onOpen={(e) => setEditing(e)} onDelete={(id) => confirm("Remover?") && del.mutate(id)} />
+        <DayList eventos={eventos} onOpen={(e) => setEditing(e)} onDelete={handleDelete} />
       )}
 
       {editing && !isAluno && <EventoModal evento={editing} userId={user!.id} onClose={() => setEditing(null)} />}
@@ -215,7 +202,7 @@ function MonthGrid({ ref_, eventos, onOpen }: { ref_: Date; eventos: Evento[]; o
 }
 
 function EventoModal({ evento, userId, onClose }: { evento: Partial<Evento>; userId: string; onClose: () => void }) {
-  const qc = useQueryClient();
+  const upsert = useUpsertEvento();
   const [titulo, setTitulo] = useState(evento.titulo ?? "");
   const [tipo, setTipo] = useState(evento.tipo ?? "consultoria");
   const [inicio, setInicio] = useState((evento.inicio ?? new Date().toISOString()).slice(0,16));
@@ -224,24 +211,21 @@ function EventoModal({ evento, userId, onClose }: { evento: Partial<Evento>; use
   const [alunoId, setAlunoId] = useState(evento.aluno_id ?? "");
   const [obs, setObs] = useState(evento.observacao ?? "");
 
-  const { data: alunos = [] } = useQuery({
-    queryKey: ["alunos-min"],
-    queryFn: async () => { const { data } = await supabase.from("alunos").select("id, full_name").order("full_name"); return data ?? []; },
-  });
+  const { data: alunos = [] } = useAlunosMin();
 
-  async function save() {
+  function save() {
     if (!titulo) { toast.error("Informe o título"); return; }
-    const payload = {
-      personal_id: userId, titulo, tipo, status,
-      inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(),
-      aluno_id: alunoId || null, observacao: obs || null,
-    };
-    const op = evento.id
-      ? supabase.from("agenda_eventos").update(payload).eq("id", evento.id)
-      : supabase.from("agenda_eventos").insert(payload);
-    const { error } = await op;
-    if (error) { toast.error(error.message); return; }
-    toast.success("Salvo"); qc.invalidateQueries({ queryKey: ["agenda"] }); onClose();
+    upsert.mutate(
+      {
+        id: evento.id, personal_id: userId, titulo, tipo, status,
+        inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(),
+        aluno_id: alunoId || null, observacao: obs || null,
+      },
+      {
+        onSuccess: () => { toast.success("Salvo"); onClose(); },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
+      },
+    );
   }
 
   return (
@@ -272,7 +256,7 @@ function EventoModal({ evento, userId, onClose }: { evento: Partial<Evento>; use
           </select>
         </div>
         <div><Label>Observação</Label><Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
-        <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save}>Salvar</Button></div>
+        <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={save} disabled={upsert.isPending}>{upsert.isPending ? "Salvando…" : "Salvar"}</Button></div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ export const qk = {
     list: (params: { search?: string; page?: number; pageSize?: number }) =>
       ["alunos", "list", params] as const,
     detail: (id: string) => ["alunos", "detail", id] as const,
+    min: ["alunos", "min"] as const, // id+nome p/ selects
   },
   exercicios: {
     all: ["exercicios"] as const,
