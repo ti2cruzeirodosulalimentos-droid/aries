@@ -32,8 +32,9 @@ export const qk = {
   mensagens: {
     all: ["mensagens"] as const,
   },
-  // Mantém a key existente ["dashboard-stats"] p/ compatibilidade.
   dashboard: {
-    stats: ["dashboard-stats"] as const,
+    all: ["dashboard"] as const,
+    pro: (uid?: string) => ["dashboard", "pro", uid] as const,
+    aluno: (uid?: string) => ["dashboard", "aluno", uid] as const,
   },
 } as const;

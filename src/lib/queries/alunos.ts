@@ -96,6 +96,7 @@ export function useUpsertAluno() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: qk.alunos.all });
+      qc.invalidateQueries({ queryKey: qk.dashboard.all });
       if (data?.id) qc.setQueryData(qk.alunos.detail(data.id), data);
     },
   });
@@ -123,6 +124,7 @@ export function useDeleteAluno() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: qk.alunos.all });
+      qc.invalidateQueries({ queryKey: qk.dashboard.all });
     },
   });
 }

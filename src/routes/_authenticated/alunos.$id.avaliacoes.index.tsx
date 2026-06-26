@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Plus, FileText, TrendingUp, TrendingDown, Calendar } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAvaliacoesByAluno } from "@/lib/queries/avaliacoes";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RowsSkeleton } from "@/components/ui/list-skeleton";
@@ -12,18 +11,7 @@ export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/")({
 
 function AvaliacoesList() {
   const { id } = Route.useParams();
-  const { data, isLoading } = useQuery({
-    queryKey: ["avaliacoes", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("avaliacoes_fisicas")
-        .select("id, data_avaliacao, peso, percentual_gordura, massa_magra, imc, protocolo")
-        .eq("aluno_id", id)
-        .order("data_avaliacao", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { data, isLoading } = useAvaliacoesByAluno(id);
 
   return (
     <div className="space-y-4">
