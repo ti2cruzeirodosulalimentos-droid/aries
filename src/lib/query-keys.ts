@@ -10,4 +10,30 @@ export const qk = {
       ["alunos", "list", params] as const,
     detail: (id: string) => ["alunos", "detail", id] as const,
   },
+  exercicios: {
+    all: ["exercicios"] as const,
+    list: () => ["exercicios", "list"] as const,
+  },
+  avaliacoes: {
+    all: ["avaliacoes"] as const,
+    byAluno: (alunoId: string) => ["avaliacoes", "aluno", alunoId] as const,
+    detail: (id: string) => ["avaliacoes", "detail", id] as const,
+  },
+  treinos: {
+    all: ["treinos"] as const,
+    byAluno: (alunoId: string) => ["treinos", "aluno", alunoId] as const,
+    detail: (id: string) => ["treinos", "detail", id] as const,
+  },
+  agenda: {
+    all: ["agenda"] as const,
+    range: (uid: string | undefined, start: string, end: string) =>
+      ["agenda", uid, start, end] as const,
+  },
+  mensagens: {
+    all: ["mensagens"] as const,
+  },
+  // Mantém a key existente ["dashboard-stats"] p/ compatibilidade.
+  dashboard: {
+    stats: ["dashboard-stats"] as const,
+  },
 } as const;

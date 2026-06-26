@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { Plus, Search, Dumbbell, Trash2, X, ExternalLink } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useCreateExercicio, useDeleteExercicio, useExercicios } from "@/lib/queries/exercicios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,20 +34,12 @@ const GRUPOS = ["Peito","Costas","Pernas","Ombros","Bíceps","Tríceps","Abdôme
 
 function ExerciciosPage() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [grupo, setGrupo] = useState("");
   const [open, setOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<any>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["exercicios"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("exercicios").select("*").order("grupo_muscular").order("nome");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { data, isLoading } = useExercicios();
 
   const grupos = useMemo(() => Array.from(new Set((data ?? []).map((e: any) => e.grupo_muscular))) as string[], [data]);
   const filtered = (data ?? []).filter((e: any) => {
@@ -57,14 +48,12 @@ function ExerciciosPage() {
     return true;
   });
 
-  const excluir = useMutation({
-    mutationFn: async (exId: string) => {
-      const { error } = await (supabase as any).from("exercicios").delete().eq("id", exId);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Exercício removido"); qc.invalidateQueries({ queryKey: ["exercicios"] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
+  const excluir = useDeleteExercicio();
+  const removeEx = (id: string) =>
+    excluir.mutate(id, {
+      onSuccess: () => toast.success("Exercício removido"),
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao remover"),
+    });
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -132,8 +121,8 @@ function ExerciciosPage() {
                       <span
                         role="button"
                         tabIndex={0}
-                        onClick={(ev) => { ev.stopPropagation(); if (confirm(`Remover "${e.nome}"?`)) excluir.mutate(e.id); }}
-                        onKeyDown={(ev) => { if (ev.key === "Enter") { ev.stopPropagation(); excluir.mutate(e.id); } }}
+                        onClick={(ev) => { ev.stopPropagation(); if (confirm(`Remover "${e.nome}"?`)) removeEx(e.id); }}
+                        onKeyDown={(ev) => { if (ev.key === "Enter") { ev.stopPropagation(); removeEx(e.id); } }}
                         className="text-muted-foreground hover:text-destructive cursor-pointer"
                       >
                         <Trash2 className="size-4" />
@@ -147,7 +136,7 @@ function ExerciciosPage() {
           </div>
         )}
 
-        {open ? <NovoExercicioModal onClose={() => setOpen(false)} onSaved={() => { setOpen(false); qc.invalidateQueries({ queryKey: ["exercicios"] }); }} /> : null}
+        {open ? <NovoExercicioModal onClose={() => setOpen(false)} onSaved={() => setOpen(false)} /> : null}
         {detalhe ? <DetalheModal exercicio={detalhe} onClose={() => setDetalhe(null)} /> : null}
     </div>
   );
@@ -219,20 +208,19 @@ function Tag({ children }: { children: React.ReactNode }) {
 
 function NovoExercicioModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const { user } = useAuth();
+  const create = useCreateExercicio();
   const [form, setForm] = useState({ nome: "", grupo_muscular: "Peito", equipamento: "", instrucoes: "", video_url: "", gif_url: "" });
-  const [saving, setSaving] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.nome.trim()) return toast.error("Informe o nome");
-    setSaving(true);
-    const { error } = await (supabase as any).from("exercicios").insert({
-      ...form, created_by: user!.id, is_publico: false,
-    });
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Exercício criado");
-    onSaved();
+    create.mutate(
+      { ...form, created_by: user!.id },
+      {
+        onSuccess: () => { toast.success("Exercício criado"); onSaved(); },
+        onError: (er) => toast.error(er instanceof Error ? er.message : "Erro ao criar"),
+      },
+    );
   }
 
   return (
@@ -274,7 +262,7 @@ function NovoExercicioModal({ onClose, onSaved }: { onClose: () => void; onSaved
         </div>
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" disabled={saving} className="bg-primary text-primary-foreground hover:opacity-90">{saving ? "Salvando..." : "Criar"}</Button>
+          <Button type="submit" disabled={create.isPending} className="bg-primary text-primary-foreground hover:opacity-90">{create.isPending ? "Salvando..." : "Criar"}</Button>
         </div>
       </form>
     </div>
