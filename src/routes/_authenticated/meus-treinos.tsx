@@ -1,9 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Dumbbell, Play } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
+import { useMeusTreinos } from "@/lib/queries/portal";
 
 export const Route = createFileRoute("/_authenticated/meus-treinos")({
   head: () => ({ meta: [{ title: "Meus Treinos — ARIÉS" }] }),
@@ -11,20 +9,8 @@ export const Route = createFileRoute("/_authenticated/meus-treinos")({
 });
 
 function MeusTreinos() {
-  const { user } = useAuth();
   const { alunoId } = usePermissions();
-  const { data = [] } = useQuery({
-    queryKey: ["meus-treinos", user?.id, alunoId],
-    enabled: !!alunoId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("treinos")
-        .select("id, nome, letra, objetivo, created_at, aluno_id")
-        .eq("aluno_id", alunoId!)
-        .order("letra");
-      return data ?? [];
-    },
-  });
+  const { data = [] } = useMeusTreinos(alunoId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">

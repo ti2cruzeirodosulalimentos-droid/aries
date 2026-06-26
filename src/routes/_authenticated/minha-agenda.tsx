@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Calendar } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useMinhaAgenda } from "@/lib/queries/portal";
 
 export const Route = createFileRoute("/_authenticated/minha-agenda")({
   head: () => ({ meta: [{ title: "Minha Agenda — ARIÉS" }] }),
@@ -11,18 +10,7 @@ export const Route = createFileRoute("/_authenticated/minha-agenda")({
 
 function MinhaAgenda() {
   const { user } = useAuth();
-  const { data = [] } = useQuery({
-    queryKey: ["minha-agenda", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("agenda_eventos")
-        .select("id, titulo, tipo, inicio, fim, status, observacao")
-        .gte("inicio", new Date().toISOString())
-        .order("inicio");
-      return data ?? [];
-    },
-  });
+  const { data = [] } = useMinhaAgenda(user?.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">

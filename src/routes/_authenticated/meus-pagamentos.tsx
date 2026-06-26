@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Receipt } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useMeusPagamentos } from "@/lib/queries/portal";
 
 export const Route = createFileRoute("/_authenticated/meus-pagamentos")({
   head: () => ({ meta: [{ title: "Meus Pagamentos — ARIÉS" }] }),
@@ -13,17 +12,7 @@ const BRL = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency"
 
 function MeusPagamentos() {
   const { user } = useAuth();
-  const { data = [] } = useQuery({
-    queryKey: ["meus-pagamentos", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("vendas")
-        .select("id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, produtos(nome, tipo)")
-        .order("data_venda", { ascending: false });
-      return data ?? [];
-    },
-  });
+  const { data = [] } = useMeusPagamentos(user?.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">

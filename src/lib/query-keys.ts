@@ -38,4 +38,10 @@ export const qk = {
     pro: (uid?: string) => ["dashboard", "pro", uid] as const,
     aluno: (uid?: string) => ["dashboard", "aluno", uid] as const,
   },
+  // Telas do próprio aluno (portal).
+  portal: {
+    treinos: (alunoId?: string) => ["portal", "treinos", alunoId] as const,
+    agenda: (uid?: string) => ["portal", "agenda", uid] as const,
+    pagamentos: (uid?: string) => ["portal", "pagamentos", uid] as const,
+  },
 } as const;
