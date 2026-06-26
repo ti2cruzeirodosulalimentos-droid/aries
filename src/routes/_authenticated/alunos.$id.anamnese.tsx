@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useAnamnese, useSaveAnamnese } from "@/lib/queries/aluno-modulos";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -31,23 +30,9 @@ const PARQ_QUESTIONS: { key: string; label: string }[] = [
 function AnamnesePage() {
   const { id: aluno_id } = Route.useParams();
   const { user } = useAuth();
-  const qc = useQueryClient();
   const [v, setV] = useState<Anamnese>({});
 
-  const { data: existing, isLoading } = useQuery({
-    queryKey: ["anamnese", aluno_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("anamneses")
-        .select("*")
-        .eq("aluno_id", aluno_id)
-        .order("data_anamnese", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: existing, isLoading } = useAnamnese(aluno_id);
 
   useEffect(() => {
     if (existing) setV(existing);
@@ -75,35 +60,23 @@ function AnamnesePage() {
     return out;
   }
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sessão expirada");
-      const clean = sanitize(v);
-      const payload = {
-        ...clean,
-        aluno_id,
-        personal_id: user.id,
-        data_anamnese: clean.data_anamnese ?? new Date().toISOString().slice(0, 10),
-      };
-      if (existing?.id) {
-        const { error } = await supabase.from("anamneses").update(payload).eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("anamneses").insert(payload);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Anamnese salva");
-      qc.invalidateQueries({ queryKey: ["anamnese", aluno_id] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
-  });
+  const save = useSaveAnamnese(aluno_id, user?.id);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    save.mutate(
+      { values: sanitize(v), existingId: existing?.id },
+      {
+        onSuccess: () => toast.success("Anamnese salva"),
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao salvar"),
+      },
+    );
+  }
 
   if (isLoading) return <div className="grid h-40 place-items-center"><Loader2 className="size-8 animate-spin text-primary" /></div>;
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-6">
+    <form onSubmit={submit} className="space-y-6">
       <Section title="Histórico Clínico">
         <Two>
           <Field label="Doenças crônicas / pré-existentes"><Textarea rows={2} value={v.doencas_cronicas ?? ""} onChange={(e) => set("doencas_cronicas", e.target.value)} /></Field>

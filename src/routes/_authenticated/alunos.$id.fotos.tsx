@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Upload, Camera, Trash2, X, GitCompareArrows } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useFotos, useRemoveFoto, useUploadFotos, useSignedUrl } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,29 +23,11 @@ type AnguloKey = (typeof ANGULOS)[number]["value"];
 
 function FotosPage() {
   const { id } = Route.useParams();
-  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
 
-  const { data: fotos, isLoading } = useQuery({
-    queryKey: ["fotos", id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("fotos_evolucao").select("*").eq("aluno_id", id)
-        .order("data_foto", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const remove = useMutation({
-    mutationFn: async (foto: any) => {
-      await supabase.storage.from("evolucao-fotos").remove([foto.storage_path]);
-      const { error } = await (supabase as any).from("fotos_evolucao").delete().eq("id", foto.id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Foto removida"); qc.invalidateQueries({ queryKey: ["fotos", id] }); },
-  });
+  const { data: fotos, isLoading } = useFotos(id);
+  const remove = useRemoveFoto(id);
 
   const sessoes = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -88,12 +69,12 @@ function FotosPage() {
       ) : (
         <div className="space-y-6">
           {sessoes.map(([data, lista]) => (
-            <SessaoCard key={data} data={data} fotos={lista} onRemove={(f) => { if (confirm("Excluir foto?")) remove.mutate(f); }} />
+            <SessaoCard key={data} data={data} fotos={lista} onRemove={(f) => { if (confirm("Excluir foto?")) remove.mutate(f, { onSuccess: () => toast.success("Foto removida") }); }} />
           ))}
         </div>
       )}
 
-      {open ? <UploadModal alunoId={id} onClose={() => setOpen(false)} onDone={() => { setOpen(false); qc.invalidateQueries({ queryKey: ["fotos", id] }); }} /> : null}
+      {open ? <UploadModal alunoId={id} onClose={() => setOpen(false)} onDone={() => setOpen(false)} /> : null}
       {compareOpen ? <CompareModal sessoes={sessoes} onClose={() => setCompareOpen(false)} /> : null}
     </div>
   );
@@ -142,51 +123,26 @@ function EmptyTile() {
   return <div className="aspect-[3/4] rounded-lg border border-dashed border-border grid place-items-center text-muted-foreground/50 text-xs">—</div>;
 }
 
-function useSignedUrl(path: string | null) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!path) { setUrl(null); return; }
-    let cancel = false;
-    supabase.storage.from("evolucao-fotos").createSignedUrl(path, 3600).then(({ data }) => {
-      if (!cancel) setUrl(data?.signedUrl ?? null);
-    });
-    return () => { cancel = true; };
-  }, [path]);
-  return url;
-}
-
 function UploadModal({ alunoId, onClose, onDone }: { alunoId: string; onClose: () => void; onDone: () => void }) {
   const { user } = useAuth();
+  const upload = useUploadFotos(alunoId, user?.id);
   const [data_foto, setData] = useState(new Date().toISOString().slice(0, 10));
   const [peso, setPeso] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [files, setFiles] = useState<Record<AnguloKey, File | null>>({ frente: null, lado: null, costas: null });
-  const [uploading, setUploading] = useState(false);
+  const uploading = upload.isPending;
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     const entries = Object.entries(files).filter(([, f]) => f) as [AnguloKey, File][];
     if (entries.length === 0) return toast.error("Selecione ao menos uma foto");
-    setUploading(true);
-    try {
-      for (const [angulo, file] of entries) {
-        const ext = file.name.split(".").pop() ?? "jpg";
-        const path = `${user!.id}/${alunoId}/${data_foto}-${angulo}-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("evolucao-fotos").upload(path, file, { upsert: false });
-        if (upErr) throw upErr;
-        const { error: insErr } = await (supabase as any).from("fotos_evolucao").insert({
-          aluno_id: alunoId, personal_id: user!.id, data_foto, angulo, storage_path: path,
-          peso: peso ? Number(peso) : null, observacoes: observacoes || null,
-        });
-        if (insErr) throw insErr;
-      }
-      toast.success("Fotos enviadas");
-      onDone();
-    } catch (err: any) {
-      toast.error(err.message ?? "Erro no upload");
-    } finally {
-      setUploading(false);
-    }
+    upload.mutate(
+      { data_foto, peso, observacoes, entries },
+      {
+        onSuccess: () => { toast.success("Fotos enviadas"); onDone(); },
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Erro no upload"),
+      },
+    );
   }
 
   return (

@@ -48,4 +48,14 @@ export const qk = {
     agenda: (uid?: string) => ["portal", "agenda", uid] as const,
     pagamentos: (uid?: string) => ["portal", "pagamentos", uid] as const,
   },
+  // Módulos vinculados a um aluno (mantêm as chaves originais p/ continuidade).
+  alunoBasic: (alunoId: string) => ["aluno-basic", alunoId] as const,
+  anamnese: { byAluno: (alunoId: string) => ["anamnese", alunoId] as const },
+  metas: { byAluno: (alunoId: string) => ["metas", alunoId] as const },
+  nutricao: {
+    plano: (alunoId: string) => ["plano", alunoId] as const,
+    refeicoes: (planoId?: string) => ["refeicoes", planoId] as const,
+  },
+  evolucao: { byAluno: (alunoId: string) => ["evolucao", alunoId] as const },
+  fotos: { byAluno: (alunoId: string) => ["fotos", alunoId] as const },
 } as const;

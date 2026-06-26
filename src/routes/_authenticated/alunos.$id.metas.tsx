@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Target as TargetIcon, Trash2, X, CheckCircle2, Circle, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useMetas, useCreateMeta, useUpdateMeta, useRemoveMeta } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,34 +26,11 @@ const TIPOS = [
 
 function MetasPage() {
   const { id } = Route.useParams();
-  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["metas", id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("metas").select("*").eq("aluno_id", id).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const update = useMutation({
-    mutationFn: async ({ mId, patch }: { mId: string; patch: any }) => {
-      const { error } = await (supabase as any).from("metas").update(patch).eq("id", mId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["metas", id] }),
-  });
-
-  const remove = useMutation({
-    mutationFn: async (mId: string) => {
-      const { error } = await (supabase as any).from("metas").delete().eq("id", mId);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Meta removida"); qc.invalidateQueries({ queryKey: ["metas", id] }); },
-  });
+  const { data, isLoading } = useMetas(id);
+  const update = useUpdateMeta(id);
+  const remove = useRemoveMeta(id);
 
   return (
     <div className="space-y-5">
@@ -81,12 +57,12 @@ function MetasPage() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {data!.map((m: any) => (
-            <MetaCard key={m.id} meta={m} onUpdate={(p) => update.mutate({ mId: m.id, patch: p })} onRemove={() => { if (confirm("Excluir meta?")) remove.mutate(m.id); }} />
+            <MetaCard key={m.id} meta={m} onUpdate={(p) => update.mutate({ mId: m.id, patch: p })} onRemove={() => { if (confirm("Excluir meta?")) remove.mutate(m.id, { onSuccess: () => toast.success("Meta removida") }); }} />
           ))}
         </div>
       )}
 
-      {open ? <NovaMetaModal alunoId={id} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); qc.invalidateQueries({ queryKey: ["metas", id] }); }} /> : null}
+      {open ? <NovaMetaModal alunoId={id} onClose={() => setOpen(false)} onSaved={() => setOpen(false)} /> : null}
     </div>
   );
 }
@@ -159,37 +135,27 @@ function Mini({ label, value, gold }: { label: string; value: string; gold?: boo
 
 function NovaMetaModal({ alunoId, onClose, onSaved }: { alunoId: string; onClose: () => void; onSaved: () => void }) {
   const { user } = useAuth();
+  const create = useCreateMeta(alunoId, user?.id);
   const [form, setForm] = useState({
     tipo: "peso", descricao: "", unidade: "kg",
     valor_inicial: "", valor_atual: "", valor_alvo: "",
     data_alvo: "", observacoes: "",
   });
-  const [saving, setSaving] = useState(false);
+  const saving = create.isPending;
 
   function changeTipo(tipo: string) {
     const t = TIPOS.find((x) => x.value === tipo);
     setForm((f) => ({ ...f, tipo, unidade: t?.unidade ?? "" }));
   }
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     const check = validate(metaSchema, form);
     if (!check.ok) return toast.error(check.message);
-    setSaving(true);
-    const v = check.data;
-    const { error } = await (supabase as any).from("metas").insert({
-      aluno_id: alunoId, personal_id: user!.id,
-      tipo: v.tipo, descricao: v.descricao, unidade: v.unidade ?? null,
-      valor_inicial: v.valor_inicial ?? null,
-      valor_atual: v.valor_atual ?? v.valor_inicial ?? null,
-      valor_alvo: v.valor_alvo,
-      data_alvo: v.data_alvo ?? null,
-      observacoes: v.observacoes ?? null,
+    create.mutate(check.data, {
+      onSuccess: () => { toast.success("Meta criada"); onSaved(); },
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao salvar"),
     });
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Meta criada");
-    onSaved();
   }
 
   return (

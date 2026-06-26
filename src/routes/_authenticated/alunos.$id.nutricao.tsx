@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useMemo } from "react";
 import { Save, Plus, Trash2, Calculator, Apple, GripVertical } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import {
+  usePlanoAtivo, useRefeicoes, useSavePlano,
+  useAddRefeicao, useUpdateRefeicao, useRemoveRefeicao,
+} from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,60 +23,17 @@ export const Route = createFileRoute("/_authenticated/alunos/$id/nutricao")({
 function NutricaoPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  const qc = useQueryClient();
 
-  const { data: plano } = useQuery({
-    queryKey: ["plano", id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("planos_alimentares").select("*").eq("aluno_id", id).eq("ativo", true)
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: plano } = usePlanoAtivo(id);
+  const { data: refeicoes } = useRefeicoes(plano?.id);
+  const savePlano = useSavePlano(id, user?.id, plano?.id);
 
-  const { data: refeicoes } = useQuery({
-    queryKey: ["refeicoes", plano?.id],
-    enabled: !!plano?.id,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("refeicoes").select("*").eq("plano_id", plano.id).order("ordem");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const savePlano = useMutation({
-    mutationFn: async (payload: any) => {
-      const clamp = (n: any, lo: number, hi: number) => {
-        if (n == null || n === "") return null;
-        const x = Number(n);
-        return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : null;
-      };
-      const clean: any = {
-        ...payload,
-        nome: typeof payload.nome === "string" ? payload.nome.trim().slice(0, 100) : payload.nome,
-        kcal_alvo: clamp(payload.kcal_alvo, 500, 6000),
-        proteina_g: clamp(payload.proteina_g, 0, 500),
-        carbo_g: clamp(payload.carbo_g, 0, 1000),
-        gordura_g: clamp(payload.gordura_g, 0, 400),
-        observacoes: typeof payload.observacoes === "string" ? payload.observacoes.trim().slice(0, 2000) : payload.observacoes,
-      };
-      if (!clean.nome || clean.nome.length < 2) throw new Error("Nome do plano obrigatório (mín. 2 caracteres)");
-      if (plano?.id) {
-        const { error } = await (supabase as any).from("planos_alimentares").update(clean).eq("id", plano.id);
-        if (error) throw error;
-        return plano.id;
-      }
-      const { data, error } = await (supabase as any).from("planos_alimentares")
-        .insert({ ...clean, aluno_id: id, personal_id: user!.id }).select("id").single();
-      if (error) throw error;
-      return data.id;
-    },
-    onSuccess: () => { toast.success("Plano salvo"); qc.invalidateQueries({ queryKey: ["plano", id] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
+  function salvar(p: Record<string, any>) {
+    savePlano.mutate(p, {
+      onSuccess: () => toast.success("Plano salvo"),
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -83,8 +42,8 @@ function NutricaoPage() {
         <h2 className="font-display text-2xl font-semibold">Plano Alimentar</h2>
       </div>
 
-      <Calculadora plano={plano} onApply={(p) => savePlano.mutate(p)} />
-      <PlanoForm plano={plano} onSave={(p) => savePlano.mutate(p)} saving={savePlano.isPending} />
+      <Calculadora plano={plano} onApply={salvar} />
+      <PlanoForm plano={plano} onSave={salvar} saving={savePlano.isPending} />
       {plano?.id ? <RefeicoesEditor planoId={plano.id} refeicoes={refeicoes ?? []} /> : (
         <div className="luxury-card p-6 text-center text-sm text-muted-foreground">
           Salve o plano para começar a adicionar refeições.
@@ -205,48 +164,11 @@ function PlanoForm({ plano, onSave, saving }: { plano: any; onSave: (p: any) => 
 }
 
 function RefeicoesEditor({ planoId, refeicoes }: { planoId: string; refeicoes: any[] }) {
-  const qc = useQueryClient();
   const totalKcal = useMemo(() => refeicoes.reduce((s, r) => s + Number(r.kcal ?? 0), 0), [refeicoes]);
 
-  const add = useMutation({
-    mutationFn: async () => {
-      const ordem = refeicoes.length + 1;
-      const nomes = ["Café da Manhã", "Lanche da Manhã", "Almoço", "Lanche da Tarde", "Jantar", "Ceia"];
-      const { error } = await (supabase as any).from("refeicoes").insert({
-        plano_id: planoId, ordem, nome: nomes[ordem - 1] ?? `Refeição ${ordem}`, horario: "", descricao: "",
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["refeicoes", planoId] }),
-  });
-
-  const update = useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: any }) => {
-      const clean: any = { ...patch };
-      if (typeof clean.nome === "string") clean.nome = clean.nome.trim().slice(0, 80);
-      if (typeof clean.descricao === "string") clean.descricao = clean.descricao.trim().slice(0, 2000);
-      if (typeof clean.horario === "string") {
-        const m = clean.horario.match(/^(\d{1,2}):(\d{2})$/);
-        clean.horario = m ? `${m[1].padStart(2, "0")}:${m[2]}` : clean.horario.slice(0, 5);
-      }
-      if ("kcal" in clean && clean.kcal != null && clean.kcal !== "") {
-        const k = Number(clean.kcal);
-        clean.kcal = Number.isFinite(k) ? Math.min(3000, Math.max(0, k)) : null;
-      }
-      const { error } = await (supabase as any).from("refeicoes").update(clean).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["refeicoes", planoId] }),
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("refeicoes").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["refeicoes", planoId] }),
-  });
+  const add = useAddRefeicao(planoId);
+  const update = useUpdateRefeicao(planoId);
+  const remove = useRemoveRefeicao(planoId);
 
   return (
     <div className="space-y-3">
@@ -265,7 +187,7 @@ function RefeicoesEditor({ planoId, refeicoes }: { planoId: string; refeicoes: a
           Nenhuma refeição. Comece adicionando.
         </div>
       ) : refeicoes.map((r) => (
-        <RefeicaoRow key={r.id} refeicao={r} onPatch={(p) => update.mutate({ id: r.id, patch: p })} onRemove={() => { if (confirm("Remover refeição?")) remove.mutate(r.id); }} />
+        <RefeicaoRow key={r.id} refeicao={r} onPatch={(p) => update.mutate({ id: r.id, patch: p }, { onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar") })} onRemove={() => { if (confirm("Remover refeição?")) remove.mutate(r.id); }} />
       ))}
     </div>
   );

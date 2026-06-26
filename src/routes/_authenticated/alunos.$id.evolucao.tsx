@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { TrendingUp, TrendingDown, Download, FileText } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
+import { useAlunoBasic, useEvolucao } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LazyBody3D, type MuscleGroup } from "@/components/3d";
@@ -34,26 +33,8 @@ function EvolucaoPage() {
   const chartRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
-  const { data: aluno } = useQuery({
-    queryKey: ["aluno-basic", id],
-    queryFn: async () => {
-      const { data } = await supabase.from("alunos").select("full_name, photo_url").eq("id", id).single();
-      return data;
-    },
-  });
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["evolucao", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("avaliacoes_fisicas")
-        .select("id, data_avaliacao, peso, percentual_gordura, massa_magra, massa_gorda, imc, circ_cintura, circ_quadril")
-        .eq("aluno_id", id)
-        .order("data_avaliacao", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as Row[];
-    },
-  });
+  const { data: aluno } = useAlunoBasic(id);
+  const { data, isLoading } = useEvolucao<Row>(id);
 
   const chartData = useMemo(() => (data ?? []).map((r) => ({
     data: formatDate(r.data_avaliacao),
