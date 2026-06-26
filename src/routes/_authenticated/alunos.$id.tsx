@@ -1,10 +1,8 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { ArrowLeft, User, ClipboardList, Activity, Dumbbell, Apple, Target, Camera, TrendingUp, MessageCircle, Lock, Unlock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { adminDisableAccount, adminEnableAccount } from "@/lib/admin.functions";
+import { useAluno, useToggleAlunoStatus } from "@/lib/queries/alunos";
+import { useMensagensTemplates } from "@/lib/queries/mensagens";
 import { renderTemplate, whatsappLink, mailtoLink } from "@/routes/_authenticated/mensagens";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -17,49 +15,26 @@ export const Route = createFileRoute("/_authenticated/alunos/$id")({
 function AlunoLayout() {
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const qc = useQueryClient();
   const [sendOpen, setSendOpen] = useState(false);
 
-  const { data: aluno } = useQuery({
-    queryKey: ["aluno", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("alunos")
-        .select("id, full_name, photo_url, status, goal, plan_expires_at, whatsapp, phone, email, user_id")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: aluno } = useAluno(id);
+  const toggleStatus = useToggleAlunoStatus(id);
 
-  const disableFn = useServerFn(adminDisableAccount);
-  const enableFn = useServerFn(adminEnableAccount);
-
-  const toggleStatus = useMutation({
-    mutationFn: async () => {
-      const novoStatus = aluno?.status === "inativo" ? "ativo" : "inativo";
-      const { error } = await supabase.from("alunos").update({ status: novoStatus }).eq("id", id);
-      if (error) throw error;
-      // Bloqueia/desbloqueia login se houver vínculo de conta
-      if (aluno?.user_id) {
-        try {
-          if (novoStatus === "inativo") await disableFn({ data: { targetUserId: aluno.user_id } });
-          else await enableFn({ data: { targetUserId: aluno.user_id } });
-        } catch (e) {
-          // continua: status do aluno foi atualizado, mas avisa
-          toast.warning(`Status atualizado, mas não bloqueou login: ${(e as Error).message}`);
-        }
-      }
-      return novoStatus;
-    },
-    onSuccess: (novoStatus) => {
-      toast.success(novoStatus === "inativo" ? "Aluno inativado e login bloqueado" : "Aluno reativado");
-      qc.invalidateQueries({ queryKey: ["aluno", id] });
-      qc.invalidateQueries({ queryKey: ["alunos"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  function alternarStatus() {
+    if (!aluno) return;
+    const acao = aluno.status === "inativo" ? "Reativar" : "Inativar (bloquear acesso de)";
+    if (!confirm(`${acao} ${aluno.full_name}?`)) return;
+    toggleStatus.mutate(
+      { status: aluno.status, user_id: aluno.user_id },
+      {
+        onSuccess: ({ novoStatus, loginWarning }) => {
+          if (loginWarning) toast.warning(`Status atualizado, mas não bloqueou login: ${loginWarning}`);
+          toast.success(novoStatus === "inativo" ? "Aluno inativado e login bloqueado" : "Aluno reativado");
+        },
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
+  }
 
   const tabs = [
     { to: `/alunos/${id}`, label: "Dados", icon: User, exact: true },
@@ -107,10 +82,7 @@ function AlunoLayout() {
           <Button
             variant="outline" size="sm"
             className={isInativo ? "text-emerald-400 border-emerald-400/40" : "text-destructive border-destructive/40"}
-            onClick={() => {
-              const acao = isInativo ? "Reativar" : "Inativar (bloquear acesso de)";
-              if (confirm(`${acao} ${aluno?.full_name}?`)) toggleStatus.mutate();
-            }}
+            onClick={alternarStatus}
             disabled={toggleStatus.isPending}
           >
             {isInativo ? <><Unlock className="size-4" /> Reativar</> : <><Lock className="size-4" /> Inativar</>}
@@ -151,15 +123,7 @@ type AlunoMsg = {
 };
 
 function EnviarMensagemModal({ aluno, onClose }: { aluno: AlunoMsg; onClose: () => void }) {
-  const { data: templates } = useQuery({
-    queryKey: ["mensagens-templates"],
-    queryFn: async () => {
-      const { data } = await supabase.from("mensagens_templates")
-        .select("id,nome,canal,assunto,corpo")
-        .order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
+  const { data: templates } = useMensagensTemplates();
   const [selectedId, setSelectedId] = useState<string>("");
   const [corpo, setCorpo] = useState("");
   const [assunto, setAssunto] = useState("");

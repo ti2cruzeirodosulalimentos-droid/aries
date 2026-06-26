@@ -20,6 +20,8 @@ export const qk = {
     all: ["avaliacoes"] as const,
     byAluno: (alunoId: string) => ["avaliacoes", "aluno", alunoId] as const,
     detail: (id: string) => ["avaliacoes", "detail", id] as const,
+    // Dados do aluno usados ao montar uma nova avaliação (nome, gênero, nascimento).
+    alunoCtx: (alunoId: string) => ["avaliacoes", "aluno-ctx", alunoId] as const,
   },
   treinos: {
     all: ["treinos"] as const,
@@ -37,10 +39,36 @@ export const qk = {
     all: ["mensagens"] as const,
     templates: ["mensagens", "templates"] as const,
   },
+  // Financeiro: vendas + metas mensais (prefixo comum p/ invalidação ampla).
+  vendas: {
+    all: ["financeiro", "vendas"] as const,
+    list: (uid?: string) => ["financeiro", "vendas", uid] as const,
+  },
+  metasFin: {
+    all: ["financeiro", "meta"] as const,
+    byMes: (uid: string | undefined, mes: number, ano: number) =>
+      ["financeiro", "meta", uid, mes, ano] as const,
+  },
+  produtos: {
+    all: ["produtos"] as const,
+    ativos: ["produtos", "ativos"] as const, // catálogo ativo (nova venda)
+    admin: ["produtos", "admin"] as const, // todos, p/ gestão
+  },
   dashboard: {
     all: ["dashboard"] as const,
     pro: (uid?: string) => ["dashboard", "pro", uid] as const,
     aluno: (uid?: string) => ["dashboard", "aluno", uid] as const,
+  },
+  // Administração de usuários e permissões.
+  permissoes: {
+    users: ["permissoes", "users"] as const,
+    userPerms: (uid: string | null) => ["permissoes", "user", uid] as const,
+  },
+  // Customização admin (campos, categorias, protocolos) — mantém chaves originais.
+  customizacao: {
+    fields: (contexto: string) => ["custom_fields", contexto] as const,
+    categorias: ["exercicio_categorias"] as const,
+    protocolos: ["protocolos_avaliacao"] as const,
   },
   // Telas do próprio aluno (portal).
   portal: {

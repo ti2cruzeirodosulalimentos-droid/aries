@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, FileDown, Loader2, Trash2, Calculator } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/$avalId")({
@@ -15,31 +14,19 @@ function AvaliacaoDetail() {
   const navigate = useNavigate();
   const [genPdf, setGenPdf] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["avaliacao", avalId],
-    queryFn: async () => {
-      const [aval, aluno, anam] = await Promise.all([
-        supabase.from("avaliacoes_fisicas").select("*").eq("id", avalId).single(),
-        supabase.from("alunos").select("*").eq("id", aluno_id).single(),
-        supabase.from("anamneses").select("*").eq("aluno_id", aluno_id).order("data_anamnese", { ascending: false }).limit(1).maybeSingle(),
-      ]);
-      if (aval.error) throw aval.error;
-      if (aluno.error) throw aluno.error;
-      return { aval: aval.data, aluno: aluno.data, anam: anam.data };
-    },
-  });
+  const { data, isLoading } = useAvaliacaoDetail(aluno_id, avalId);
 
-  const del = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("avaliacoes_fisicas").delete().eq("id", avalId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Avaliação removida");
-      navigate({ to: "/alunos/$id/avaliacoes", params: { id: aluno_id } });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  const del = useDeleteAvaliacao(aluno_id);
+  function removerAvaliacao() {
+    if (!confirm("Remover avaliação?")) return;
+    del.mutate(avalId, {
+      onSuccess: () => {
+        toast.success("Avaliação removida");
+        navigate({ to: "/alunos/$id/avaliacoes", params: { id: aluno_id } });
+      },
+      onError: (e: any) => toast.error(e.message),
+    });
+  }
 
   async function downloadPDF() {
     if (!data) return;
@@ -92,7 +79,7 @@ function AvaliacaoDetail() {
           <Button onClick={downloadPDF} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
             {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><FileDown className="size-4" /> Baixar PDF</>}
           </Button>
-          <Button variant="outline" onClick={() => { if (confirm("Remover avaliação?")) del.mutate(); }} className="border-destructive/40 text-destructive hover:bg-destructive/10">
+          <Button variant="outline" onClick={removerAvaliacao} className="border-destructive/40 text-destructive hover:bg-destructive/10">
             <Trash2 className="size-4" />
           </Button>
         </div>

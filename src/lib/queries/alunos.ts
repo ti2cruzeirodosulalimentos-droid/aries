@@ -1,5 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { adminDisableAccount, adminEnableAccount } from "@/lib/admin.functions";
 import { qk } from "@/lib/query-keys";
 
 export interface AlunoListItem {
@@ -123,6 +125,49 @@ export function useDeleteAluno() {
       ctx?.prev?.forEach(([key, value]) => qc.setQueryData(key, value));
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: qk.alunos.all });
+      qc.invalidateQueries({ queryKey: qk.dashboard.all });
+    },
+  });
+}
+
+export interface ToggleStatusInput {
+  status: string | null;
+  user_id: string | null;
+}
+
+export interface ToggleStatusResult {
+  novoStatus: "ativo" | "inativo";
+  /** Mensagem quando o status mudou mas o bloqueio/desbloqueio de login falhou. */
+  loginWarning: string | null;
+}
+
+/**
+ * Alterna ativo/inativo do aluno e, se houver conta vinculada, bloqueia ou
+ * libera o login via server fns admin. Falha no login não derruba a operação:
+ * é devolvida em `loginWarning` para a tela avisar.
+ */
+export function useToggleAlunoStatus(id: string) {
+  const qc = useQueryClient();
+  const disableFn = useServerFn(adminDisableAccount);
+  const enableFn = useServerFn(adminEnableAccount);
+  return useMutation({
+    mutationFn: async (aluno: ToggleStatusInput): Promise<ToggleStatusResult> => {
+      const novoStatus = aluno.status === "inativo" ? "ativo" : "inativo";
+      const { error } = await supabase.from("alunos").update({ status: novoStatus }).eq("id", id);
+      if (error) throw error;
+      let loginWarning: string | null = null;
+      if (aluno.user_id) {
+        try {
+          if (novoStatus === "inativo") await disableFn({ data: { targetUserId: aluno.user_id } });
+          else await enableFn({ data: { targetUserId: aluno.user_id } });
+        } catch (e) {
+          loginWarning = (e as Error).message;
+        }
+      }
+      return { novoStatus, loginWarning };
+    },
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.alunos.all });
       qc.invalidateQueries({ queryKey: qk.dashboard.all });
     },

@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, HeartPulse, Dumbbell, Camera, PersonStanding, Settings2, Check } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useAlunoParaAvaliacao, useCreateAvaliacao } from "@/lib/queries/avaliacoes";
 import { useAuth } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -76,13 +75,8 @@ function NovaAvaliacao() {
     protocolo: "jp3" as Protocolo,
   });
 
-  const { data: aluno } = useQuery({
-    queryKey: ["aluno-basic", aluno_id],
-    queryFn: async () => {
-      const { data } = await supabase.from("alunos").select("full_name, gender, birth_date").eq("id", aluno_id).single();
-      return data;
-    },
-  });
+  const { data: aluno } = useAlunoParaAvaliacao(aluno_id);
+  const create = useCreateAvaliacao(aluno_id);
 
   useEffect(() => {
     if (aluno && !v.genero) {
@@ -115,76 +109,73 @@ function NovaAvaliacao() {
     });
   }, [v]);
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sessão expirada");
-      // Validações críticas
-      if (!v.data_avaliacao) throw new Error("Data da avaliação é obrigatória");
-      if (v.peso == null || v.peso < 20 || v.peso > 350) throw new Error("Peso inválido (20–350 kg)");
-      if (v.altura == null || v.altura < 1.0 || v.altura > 2.5) throw new Error("Altura inválida (1.00–2.50 m)");
-      if (v.idade != null && (v.idade < 5 || v.idade > 120)) throw new Error("Idade inválida");
-      const bilatPayload: Record<string, number | null> = {};
-      for (const [k] of CIRC_BILAT) {
-        bilatPayload[`circ_${k}_d`] = v[`circ_${k}_d`] ?? null;
-        bilatPayload[`circ_${k}_e`] = v[`circ_${k}_e`] ?? null;
-      }
-      // Espelha valores nos campos legados usados em listagens antigas
-      const legacy = {
-        circ_braco_d: v.circ_braco_contr_d ?? v.circ_braco_relax_d ?? null,
-        circ_braco_e: v.circ_braco_contr_e ?? v.circ_braco_relax_e ?? null,
-        circ_antebraco_d: v.circ_antebraco_relax_d ?? null,
-        circ_antebraco_e: v.circ_antebraco_relax_e ?? null,
-        circ_coxa_d: v.circ_coxa_medial_d ?? v.circ_coxa_prox_d ?? null,
-        circ_coxa_e: v.circ_coxa_medial_e ?? v.circ_coxa_prox_e ?? null,
-        circ_panturrilha_d: v.circ_panturrilha_d ?? null,
-        circ_panturrilha_e: v.circ_panturrilha_e ?? null,
-      };
-      const payload = {
-        aluno_id,
-        personal_id: user.id,
-        data_avaliacao: v.data_avaliacao,
-        protocolo: v.protocolo,
-        peso: v.peso, altura: v.altura, idade: v.idade, genero: v.genero,
-        pressao_sistolica: v.pressao_sistolica, pressao_diastolica: v.pressao_diastolica, fc_repouso: v.fc_repouso,
-        ...Object.fromEntries(CIRC.map(([k]) => [k, v[k] ?? null])),
-        ...bilatPayload,
-        ...legacy,
-        ...Object.fromEntries(DIAMETROS.map(([k]) => [k, v[k] ?? null])),
-        ...Object.fromEntries(DOBRAS.map(([k]) => [k, v[k] ?? null])),
-        vo2_protocolo: v.vo2_protocolo ?? null,
-        vo2_distancia: v.vo2_distancia ?? null,
-        vo2_fc_final: v.vo2_fc_final ?? null,
-        vo2_resultado: v.vo2_resultado ?? null,
-        vo2_classificacao: v.vo2_classificacao ?? null,
-        neuro_preensao_d: v.neuro_preensao_d ?? null,
-        neuro_preensao_e: v.neuro_preensao_e ?? null,
-        neuro_sentar_alcancar: v.neuro_sentar_alcancar ?? null,
-        neuro_abdominal_1min: v.neuro_abdominal_1min ?? null,
-        neuro_flexao_1min: v.neuro_flexao_1min ?? null,
-        neuro_salto_vertical: v.neuro_salto_vertical ?? null,
-        postural: v.postural ?? {},
-        densidade_corporal: calc?.densidade,
-        percentual_gordura: calc?.percentual_gordura,
-        massa_gorda: calc?.massa_gorda,
-        massa_magra: calc?.massa_magra,
-        peso_ideal_min: calc?.peso_ideal_min,
-        peso_ideal_max: calc?.peso_ideal_max,
-        imc: calc?.imc,
-        imc_classificacao: calc?.imc_classificacao,
-        rcq: calc?.rcq,
-        rcq_classificacao: calc?.rcq_classificacao,
-        observacoes: v.observacoes,
-      };
-      const { data, error } = await supabase.from("avaliacoes_fisicas").insert(payload).select("id").single();
-      if (error) throw error;
-      return data.id as string;
-    },
-    onSuccess: (id) => {
-      toast.success("Avaliação salva");
-      navigate({ to: "/alunos/$id/avaliacoes/$avalId", params: { id: aluno_id, avalId: id } });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
-  });
+  function salvar() {
+    if (!user) { toast.error("Sessão expirada"); return; }
+    // Validações críticas
+    if (!v.data_avaliacao) { toast.error("Data da avaliação é obrigatória"); return; }
+    if (v.peso == null || v.peso < 20 || v.peso > 350) { toast.error("Peso inválido (20–350 kg)"); return; }
+    if (v.altura == null || v.altura < 1.0 || v.altura > 2.5) { toast.error("Altura inválida (1.00–2.50 m)"); return; }
+    if (v.idade != null && (v.idade < 5 || v.idade > 120)) { toast.error("Idade inválida"); return; }
+    const bilatPayload: Record<string, number | null> = {};
+    for (const [k] of CIRC_BILAT) {
+      bilatPayload[`circ_${k}_d`] = v[`circ_${k}_d`] ?? null;
+      bilatPayload[`circ_${k}_e`] = v[`circ_${k}_e`] ?? null;
+    }
+    // Espelha valores nos campos legados usados em listagens antigas
+    const legacy = {
+      circ_braco_d: v.circ_braco_contr_d ?? v.circ_braco_relax_d ?? null,
+      circ_braco_e: v.circ_braco_contr_e ?? v.circ_braco_relax_e ?? null,
+      circ_antebraco_d: v.circ_antebraco_relax_d ?? null,
+      circ_antebraco_e: v.circ_antebraco_relax_e ?? null,
+      circ_coxa_d: v.circ_coxa_medial_d ?? v.circ_coxa_prox_d ?? null,
+      circ_coxa_e: v.circ_coxa_medial_e ?? v.circ_coxa_prox_e ?? null,
+      circ_panturrilha_d: v.circ_panturrilha_d ?? null,
+      circ_panturrilha_e: v.circ_panturrilha_e ?? null,
+    };
+    const payload = {
+      aluno_id,
+      personal_id: user.id,
+      data_avaliacao: v.data_avaliacao,
+      protocolo: v.protocolo,
+      peso: v.peso, altura: v.altura, idade: v.idade, genero: v.genero,
+      pressao_sistolica: v.pressao_sistolica, pressao_diastolica: v.pressao_diastolica, fc_repouso: v.fc_repouso,
+      ...Object.fromEntries(CIRC.map(([k]) => [k, v[k] ?? null])),
+      ...bilatPayload,
+      ...legacy,
+      ...Object.fromEntries(DIAMETROS.map(([k]) => [k, v[k] ?? null])),
+      ...Object.fromEntries(DOBRAS.map(([k]) => [k, v[k] ?? null])),
+      vo2_protocolo: v.vo2_protocolo ?? null,
+      vo2_distancia: v.vo2_distancia ?? null,
+      vo2_fc_final: v.vo2_fc_final ?? null,
+      vo2_resultado: v.vo2_resultado ?? null,
+      vo2_classificacao: v.vo2_classificacao ?? null,
+      neuro_preensao_d: v.neuro_preensao_d ?? null,
+      neuro_preensao_e: v.neuro_preensao_e ?? null,
+      neuro_sentar_alcancar: v.neuro_sentar_alcancar ?? null,
+      neuro_abdominal_1min: v.neuro_abdominal_1min ?? null,
+      neuro_flexao_1min: v.neuro_flexao_1min ?? null,
+      neuro_salto_vertical: v.neuro_salto_vertical ?? null,
+      postural: v.postural ?? {},
+      densidade_corporal: calc?.densidade,
+      percentual_gordura: calc?.percentual_gordura,
+      massa_gorda: calc?.massa_gorda,
+      massa_magra: calc?.massa_magra,
+      peso_ideal_min: calc?.peso_ideal_min,
+      peso_ideal_max: calc?.peso_ideal_max,
+      imc: calc?.imc,
+      imc_classificacao: calc?.imc_classificacao,
+      rcq: calc?.rcq,
+      rcq_classificacao: calc?.rcq_classificacao,
+      observacoes: v.observacoes,
+    };
+    create.mutate(payload, {
+      onSuccess: (id) => {
+        toast.success("Avaliação salva");
+        navigate({ to: "/alunos/$id/avaliacoes/$avalId", params: { id: aluno_id, avalId: id } });
+      },
+      onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
+    });
+  }
 
   // Progresso/contadores para o menu
   const counts = useMemo(() => {
@@ -255,10 +246,10 @@ function NovaAvaliacao() {
 
         <Button
           className="w-full bg-primary text-primary-foreground"
-          onClick={() => save.mutate()}
-          disabled={save.isPending}
+          onClick={salvar}
+          disabled={create.isPending}
         >
-          {save.isPending ? <><Loader2 className="size-4 animate-spin" /> Salvando</> : <><Save className="size-4" /> Salvar Avaliação</>}
+          {create.isPending ? <><Loader2 className="size-4 animate-spin" /> Salvando</> : <><Save className="size-4" /> Salvar Avaliação</>}
         </Button>
       </div>
     );
