@@ -1,10 +1,9 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { MessageCircle, Plus, Pencil, Trash2, Save, X, Mail, Phone } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/lib/auth";
+import { type Template, useDeleteTemplate, useMensagensTemplates, useUpsertTemplate } from "@/lib/queries/mensagens";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,66 +15,33 @@ export const Route = createFileRoute("/_authenticated/mensagens")({
   component: MensagensPage,
 });
 
-type Template = {
-  id: string;
-  nome: string;
-  canal: "whatsapp" | "email" | "ambos";
-  assunto: string | null;
-  corpo: string;
-};
-
 const EMPTY: Omit<Template, "id"> = { nome: "", canal: "whatsapp", assunto: "", corpo: "" };
 
 function MensagensPage() {
   const { isAluno, loading } = usePermissions();
   const { user } = useAuth();
-  const qc = useQueryClient();
   const [editing, setEditing] = useState<Template | null>(null);
 
-  const { data: templates } = useQuery({
-    queryKey: ["mensagens-templates"],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mensagens_templates")
-        .select("id,nome,canal,assunto,corpo")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Template[];
-    },
-  });
+  const { data: templates } = useMensagensTemplates();
+  const saveMut = useUpsertTemplate();
+  const deleteMut = useDeleteTemplate();
 
-  const saveMut = useMutation({
-    mutationFn: async (t: Template | (Omit<Template, "id"> & { id?: string })) => {
-      if ("id" in t && t.id) {
-        const { error } = await supabase.from("mensagens_templates")
-          .update({ nome: t.nome, canal: t.canal, assunto: t.assunto, corpo: t.corpo })
-          .eq("id", t.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("mensagens_templates")
-          .insert({ owner_id: user!.id, nome: t.nome, canal: t.canal, assunto: t.assunto, corpo: t.corpo });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Template salvo");
-      setEditing(null);
-      qc.invalidateQueries({ queryKey: ["mensagens-templates"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("mensagens_templates").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Removido");
-      qc.invalidateQueries({ queryKey: ["mensagens-templates"] });
-    },
-  });
+  function handleSave() {
+    if (!editing) return;
+    saveMut.mutate(
+      { ...editing, owner_id: user!.id },
+      {
+        onSuccess: () => { toast.success("Template salvo"); setEditing(null); },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
+      },
+    );
+  }
+  function handleDelete(id: string) {
+    deleteMut.mutate(id, {
+      onSuccess: () => toast.success("Removido"),
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao remover"),
+    });
+  }
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>;
   if (isAluno) return <Navigate to="/dashboard" replace />;
@@ -121,7 +87,7 @@ function MensagensPage() {
                   <Pencil className="size-3.5" />
                 </Button>
                 <Button size="sm" variant="outline" className="text-destructive border-destructive/40"
-                  onClick={() => { if (confirm("Remover este template?")) deleteMut.mutate(t.id); }}>
+                  onClick={() => { if (confirm("Remover este template?")) handleDelete(t.id); }}>
                   <Trash2 className="size-3.5" />
                 </Button>
               </div>
@@ -181,7 +147,7 @@ function MensagensPage() {
             </div>
             <div className="flex justify-end gap-2 pt-3 border-t border-border">
               <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-              <Button onClick={() => saveMut.mutate(editing)} disabled={saveMut.isPending || !editing.nome || !editing.corpo}>
+              <Button onClick={handleSave} disabled={saveMut.isPending || !editing.nome || !editing.corpo}>
                 <Save className="size-4" /> Salvar
               </Button>
             </div>

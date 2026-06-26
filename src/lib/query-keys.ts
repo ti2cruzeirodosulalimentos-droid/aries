@@ -31,6 +31,7 @@ export const qk = {
   },
   mensagens: {
     all: ["mensagens"] as const,
+    templates: ["mensagens", "templates"] as const,
   },
   dashboard: {
     all: ["dashboard"] as const,
