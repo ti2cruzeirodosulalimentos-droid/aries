@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Camera, Loader2, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
+import { useDeleteAluno, useUpsertAluno } from "@/lib/queries/alunos";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,18 +63,26 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
     setValues((v) => ({ ...v, [key]: value }));
   }
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sessão expirada");
-      const check = validate(alunoSchema, values);
-      if (!check.ok) {
-        setErrors(check.errors);
-        throw new Error(check.message);
-      }
-      setErrors({});
-      const v = check.data;
-      const payload = {
-        personal_id: (isAdmin && v.personal_id) ? v.personal_id : user.id,
+  const upsert = useUpsertAluno();
+  const del = useDeleteAluno();
+
+  function handleSave() {
+    if (!user) {
+      toast.error("Sessão expirada");
+      return;
+    }
+    const check = validate(alunoSchema, values);
+    if (!check.ok) {
+      setErrors(check.errors);
+      toast.error(check.message);
+      return;
+    }
+    setErrors({});
+    const v = check.data;
+    upsert.mutate(
+      {
+        id: mode === "edit" ? values.id : undefined,
+        personal_id: isAdmin && v.personal_id ? v.personal_id : user.id,
         full_name: v.full_name,
         photo_url: values.photo_url || null,
         birth_date: v.birth_date ?? null,
@@ -88,42 +97,29 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
         notes: v.notes ?? null,
         status: v.status ?? "ativo",
         plan_expires_at: v.plan_expires_at ?? null,
-      };
-      if (mode === "create") {
-        const { data, error } = await supabase.from("alunos").insert(payload).select().single();
-        if (error) throw error;
-        return data;
-      } else {
-        const { data, error } = await supabase
-          .from("alunos").update(payload).eq("id", values.id!).select().single();
-        if (error) throw error;
-        return data;
-      }
-    },
-    onSuccess: () => {
-      toast.success(mode === "create" ? "Aluno cadastrado!" : "Alterações salvas");
-      qc.invalidateQueries({ queryKey: ["alunos"] });
-      qc.invalidateQueries({ queryKey: ["aluno"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      navigate({ to: "/alunos" });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
-  });
+      },
+      {
+        onSuccess: () => {
+          toast.success(mode === "create" ? "Aluno cadastrado!" : "Alterações salvas");
+          qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+          navigate({ to: "/alunos" });
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
+      },
+    );
+  }
 
-  const del = useMutation({
-    mutationFn: async () => {
-      if (!values.id) return;
-      const { error } = await supabase.from("alunos").delete().eq("id", values.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Aluno excluído");
-      qc.invalidateQueries({ queryKey: ["alunos"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      navigate({ to: "/alunos" });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao excluir"),
-  });
+  function handleDelete() {
+    if (!values.id) return;
+    del.mutate(values.id, {
+      onSuccess: () => {
+        toast.success("Aluno excluído");
+        qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        navigate({ to: "/alunos" });
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao excluir"),
+    });
+  }
 
   async function handlePhoto(file: File) {
     if (!user) return;
@@ -148,7 +144,7 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
       className="mx-auto max-w-4xl space-y-6"
     >
       <div className="luxury-card rounded-2xl p-6">
@@ -273,10 +269,10 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
       <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl bg-background/80 p-3 backdrop-blur gold-border">
         <Button
           type="submit"
-          disabled={save.isPending}
+          disabled={upsert.isPending}
           className="h-11 flex-1 bg-primary font-semibold text-primary-foreground hover:opacity-90 gold-glow sm:flex-none sm:px-8"
         >
-          {save.isPending ? <Loader2 className="size-4 animate-spin" /> : (<><Save className="size-4" /> Salvar</>)}
+          {upsert.isPending ? <Loader2 className="size-4 animate-spin" /> : (<><Save className="size-4" /> Salvar</>)}
         </Button>
         {mode === "edit" && (
           <Button
@@ -284,7 +280,7 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
             variant="outline"
             disabled={del.isPending}
             onClick={() => {
-              if (confirm("Excluir este aluno? Esta ação não pode ser desfeita.")) del.mutate();
+              if (confirm("Excluir este aluno? Esta ação não pode ser desfeita.")) handleDelete();
             }}
             className="h-11 border-destructive/40 text-destructive hover:bg-destructive/10"
           >

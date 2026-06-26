@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { qk } from "@/lib/query-keys";
 
@@ -57,6 +57,72 @@ export function useAluno(id: string) {
       const { data, error } = await supabase.from("alunos").select("*").eq("id", id).single();
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export interface AlunoUpsert {
+  id?: string;
+  personal_id: string;
+  full_name: string;
+  photo_url?: string | null;
+  birth_date?: string | null;
+  gender?: string | null;
+  cpf?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  address?: string | null;
+  profession?: string | null;
+  goal?: string | null;
+  notes?: string | null;
+  status?: string;
+  plan_expires_at?: string | null;
+}
+
+/** Cria ou atualiza um aluno; invalida as listas e popula o cache do detalhe. */
+export function useUpsertAluno() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...rest }: AlunoUpsert) => {
+      if (id) {
+        const { data, error } = await supabase.from("alunos").update(rest).eq("id", id).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase.from("alunos").insert(rest).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: qk.alunos.all });
+      if (data?.id) qc.setQueryData(qk.alunos.detail(data.id), data);
+    },
+  });
+}
+
+/** Exclui um aluno com remoção OTIMISTA das listas em cache (rollback no erro). */
+export function useDeleteAluno() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("alunos").delete().eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: qk.alunos.lists });
+      const prev = qc.getQueriesData<AlunosPage>({ queryKey: qk.alunos.lists });
+      qc.setQueriesData<AlunosPage>({ queryKey: qk.alunos.lists }, (old) =>
+        old ? { rows: old.rows.filter((r) => r.id !== id), total: Math.max(0, old.total - 1) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      ctx?.prev?.forEach(([key, value]) => qc.setQueryData(key, value));
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qk.alunos.all });
     },
   });
 }

@@ -5,6 +5,7 @@
 export const qk = {
   alunos: {
     all: ["alunos"] as const,
+    lists: ["alunos", "list"] as const, // prefixo de todas as listas (optimistic)
     list: (params: { search?: string; page?: number; pageSize?: number }) =>
       ["alunos", "list", params] as const,
     detail: (id: string) => ["alunos", "detail", id] as const,
