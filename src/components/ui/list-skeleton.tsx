@@ -29,3 +29,39 @@ export function RowsSkeleton({ count = 5 }: { count?: number }) {
     </div>
   );
 }
+
+/** Grade de cards de métrica (dashboard, financeiro, resumos). */
+export function StatsSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true" aria-live="polite">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="luxury-card space-y-3 rounded-2xl p-5">
+          <Skeleton className="h-3 w-1/2" />
+          <Skeleton className="h-7 w-2/3" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Esqueleto genérico de página de detalhe/formulário (cabeçalho + blocos). */
+export function DetailSkeleton({ blocks = 3 }: { blocks?: number }) {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <div className="flex items-center gap-4">
+        <Skeleton className="size-16 shrink-0 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-3 w-1/4" />
+        </div>
+      </div>
+      {Array.from({ length: blocks }).map((_, i) => (
+        <div key={i} className="luxury-card space-y-3 rounded-2xl p-5">
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-5/6" />
+        </div>
+      ))}
+    </div>
+  );
+}

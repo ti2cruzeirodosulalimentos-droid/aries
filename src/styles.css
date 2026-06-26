@@ -171,3 +171,27 @@ html, body { background: var(--background); color: var(--foreground); }
 @utility gold-glow {
   box-shadow: var(--shadow-gold);
 }
+
+/* Transição de entrada premium das telas — aplicada uma vez no AppShell,
+   re-dispara a cada navegação (key={pathname}). */
+@utility page-enter {
+  animation: page-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Acessibilidade: sem movimento para quem prefere reduzido. */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
