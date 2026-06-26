@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DollarSign, Plus, Package, Target, TrendingUp, Users, Trash2, Pencil } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  useVendas, useMetaFinanceira, useDeleteVenda, useCreateVenda, useUpsertMetaFinanceira,
+  useAlunosMin, useProdutosAtivos, useProdutosAdmin, useUpsertProduto, useDeleteProduto,
+} from "@/lib/queries/financeiro";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,6 @@ const BRL = (cents: number) =>
 function FinanceiroPage() {
   const { user } = useAuth();
   const { isAdmin, isAluno } = usePermissions();
-  const qc = useQueryClient();
   const [showNew, setShowNew] = useState(false);
   const [showProdutos, setShowProdutos] = useState(false);
 
@@ -29,32 +30,8 @@ function FinanceiroPage() {
   const mes = hoje.getMonth() + 1;
   const ano = hoje.getFullYear();
 
-  const { data: vendas = [] } = useQuery({
-    queryKey: ["vendas", user?.id],
-    enabled: !!user && !isAluno,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vendas")
-        .select("id, aluno_id, personal_id, produto_id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, alunos(full_name), produtos(nome, tipo)")
-        .order("data_venda", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: meta } = useQuery({
-    queryKey: ["meta-fin", user?.id, mes, ano],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("metas_financeiras")
-        .select("id, valor_centavos")
-        .eq("mes", mes).eq("ano", ano)
-        .eq("personal_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
+  const { data: vendas = [] } = useVendas(user?.id, !!user && !isAluno);
+  const { data: meta } = useMetaFinanceira(user?.id, mes, ano);
 
   const stats = useMemo(() => {
     const inicioMes = new Date(ano, mes - 1, 1);
@@ -80,14 +57,14 @@ function FinanceiroPage() {
 
   const pctMeta = meta?.valor_centavos ? Math.min(100, Math.round((stats.receitaMes / meta.valor_centavos) * 100)) : 0;
 
-  const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("vendas").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Venda removida"); qc.invalidateQueries({ queryKey: ["vendas"] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const del = useDeleteVenda();
+  function removerVenda(id: string) {
+    if (!confirm("Remover esta venda?")) return;
+    del.mutate(id, {
+      onSuccess: () => toast.success("Venda removida"),
+      onError: (e: Error) => toast.error(e.message),
+    });
+  }
 
   if (isAluno) {
     return <div className="p-6 text-muted-foreground">Acesse "Meus Pagamentos" no menu.</div>;
@@ -102,7 +79,7 @@ function FinanceiroPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setShowProdutos(true)} className="gap-2"><Package className="size-4" /> Produtos</Button>
-          <MetaButton meta={meta?.valor_centavos ?? 0} mes={mes} ano={ano} userId={user!.id} onSaved={() => qc.invalidateQueries({ queryKey: ["meta-fin"] })} />
+          <MetaButton meta={meta?.valor_centavos ?? 0} mes={mes} ano={ano} userId={user!.id} />
           <Button onClick={() => setShowNew(true)} className="gap-2"><Plus className="size-4" /> Nova venda</Button>
         </div>
       </header>
@@ -141,7 +118,7 @@ function FinanceiroPage() {
                     <td>{(v.produtos as { nome?: string } | null)?.nome ?? "—"}</td>
                     <td className="text-right font-medium">{BRL(v.valor_centavos)}</td>
                     <td className="text-right">
-                      <button onClick={() => confirm("Remover esta venda?") && del.mutate(v.id)} className="text-destructive/70 hover:text-destructive">
+                      <button onClick={() => removerVenda(v.id)} className="text-destructive/70 hover:text-destructive">
                         <Trash2 className="size-3.5" />
                       </button>
                     </td>
@@ -184,16 +161,19 @@ function Card({ icon: Icon, label, value }: { icon: typeof DollarSign; label: st
   );
 }
 
-function MetaButton({ meta, mes, ano, userId, onSaved }: { meta: number; mes: number; ano: number; userId: string; onSaved: () => void }) {
+function MetaButton({ meta, mes, ano, userId }: { meta: number; mes: number; ano: number; userId: string }) {
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState(((meta || 0) / 100).toFixed(2));
-  async function save() {
+  const upsert = useUpsertMetaFinanceira();
+  function save() {
     const valor_centavos = Math.round(parseFloat(val.replace(",", ".") || "0") * 100);
-    const { error } = await supabase
-      .from("metas_financeiras")
-      .upsert({ personal_id: userId, mes, ano, valor_centavos }, { onConflict: "personal_id,mes,ano" });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Meta salva"); setOpen(false); onSaved();
+    upsert.mutate(
+      { personal_id: userId, mes, ano, valor_centavos },
+      {
+        onSuccess: () => { toast.success("Meta salva"); setOpen(false); },
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
   }
   return (
     <>
@@ -213,21 +193,9 @@ function MetaButton({ meta, mes, ano, userId, onSaved }: { meta: number; mes: nu
 }
 
 function NovaVendaModal({ onClose, userId }: { onClose: () => void; userId: string }) {
-  const qc = useQueryClient();
-  const { data: alunos = [] } = useQuery({
-    queryKey: ["alunos-min"],
-    queryFn: async () => {
-      const { data } = await supabase.from("alunos").select("id, full_name, personal_id").order("full_name");
-      return data ?? [];
-    },
-  });
-  const { data: produtos = [] } = useQuery({
-    queryKey: ["produtos"],
-    queryFn: async () => {
-      const { data } = await supabase.from("produtos").select("*").eq("ativo", true).order("preco_centavos");
-      return data ?? [];
-    },
-  });
+  const { data: alunos = [] } = useAlunosMin();
+  const { data: produtos = [] } = useProdutosAtivos();
+  const create = useCreateVenda();
   const [alunoId, setAlunoId] = useState("");
   const [produtoId, setProdutoId] = useState("");
   const [valor, setValor] = useState("0,00");
@@ -240,23 +208,25 @@ function NovaVendaModal({ onClose, userId }: { onClose: () => void; userId: stri
     if (p) setValor((p.preco_centavos / 100).toFixed(2).replace(".", ","));
   }
 
-  async function salvar() {
+  function salvar() {
     if (!alunoId || !produtoId) { toast.error("Selecione aluno e produto"); return; }
     const aluno = alunos.find((a) => a.id === alunoId);
     const valor_centavos = Math.round(parseFloat(valor.replace(",", ".")) * 100);
-    const { error } = await supabase.from("vendas").insert({
-      aluno_id: alunoId,
-      personal_id: aluno?.personal_id ?? userId,
-      produto_id: produtoId,
-      valor_centavos,
-      data_venda: data,
-      inicio_vigencia: data,
-      forma_pagamento: forma,
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Venda registrada");
-    qc.invalidateQueries({ queryKey: ["vendas"] });
-    onClose();
+    create.mutate(
+      {
+        aluno_id: alunoId,
+        personal_id: aluno?.personal_id ?? userId,
+        produto_id: produtoId,
+        valor_centavos,
+        data_venda: data,
+        inicio_vigencia: data,
+        forma_pagamento: forma,
+      },
+      {
+        onSuccess: () => { toast.success("Venda registrada"); onClose(); },
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
   }
 
   return (
@@ -293,14 +263,9 @@ function NovaVendaModal({ onClose, userId }: { onClose: () => void; userId: stri
 }
 
 function ProdutosModal({ onClose }: { onClose: () => void }) {
-  const qc = useQueryClient();
-  const { data: produtos = [] } = useQuery({
-    queryKey: ["produtos-admin"],
-    queryFn: async () => {
-      const { data } = await supabase.from("produtos").select("*").order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
+  const { data: produtos = [] } = useProdutosAdmin();
+  const upsert = useUpsertProduto();
+  const del = useDeleteProduto();
   const [editing, setEditing] = useState<any>(null);
   const blank: any = { nome: "", tipo: "plano", preco_centavos: 0, duracao_meses: 1, descricao: "", ativo: true };
   const [form, setForm] = useState<any>(blank);
@@ -309,26 +274,20 @@ function ProdutosModal({ onClose }: { onClose: () => void }) {
   function startEdit(p: any) { setEditing(p); setForm(p); setValor((p.preco_centavos / 100).toFixed(2).replace(".", ",")); }
   function startNew() { setEditing({}); setForm(blank); setValor("0,00"); }
 
-  async function salvar() {
+  function salvar() {
     if (!form.nome?.trim()) { toast.error("Nome obrigatório"); return; }
     const preco_centavos = Math.round(parseFloat(valor.replace(",", ".") || "0") * 100);
-    const payload: any = { ...form, preco_centavos };
-    delete payload.created_at; delete payload.updated_at;
-    const { error } = form.id
-      ? await supabase.from("produtos").update(payload).eq("id", form.id)
-      : await supabase.from("produtos").insert(payload);
-    if (error) { toast.error(error.message); return; }
-    toast.success(form.id ? "Atualizado" : "Criado");
-    setEditing(null);
-    qc.invalidateQueries({ queryKey: ["produtos-admin"] });
-    qc.invalidateQueries({ queryKey: ["produtos"] });
+    upsert.mutate(
+      { ...form, preco_centavos },
+      {
+        onSuccess: () => { toast.success(form.id ? "Atualizado" : "Criado"); setEditing(null); },
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
   }
-  async function excluir(id: string) {
+  function excluir(id: string) {
     if (!confirm("Excluir este produto?")) return;
-    const { error } = await supabase.from("produtos").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["produtos-admin"] });
-    qc.invalidateQueries({ queryKey: ["produtos"] });
+    del.mutate(id, { onError: (e: Error) => toast.error(e.message) });
   }
 
   return (
