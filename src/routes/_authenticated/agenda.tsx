@@ -10,6 +10,8 @@ import {
   useAlunosMin,
   type Evento,
 } from "@/lib/queries/agenda";
+import { ErrorState } from "@/components/ui/error-state";
+import { RowsSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +55,7 @@ function AgendaPage() {
     return { start: s, end: e };
   }, [ref, view]);
 
-  const { data: eventos = [] } = useAgendaEventos(
+  const { data: eventos = [], isLoading, isError, refetch } = useAgendaEventos(
     user?.id,
     range.start.toISOString(),
     range.end.toISOString(),
@@ -105,7 +107,11 @@ function AgendaPage() {
         </div>
       </div>
 
-      {view === "mes" ? (
+      {isLoading ? (
+        <RowsSkeleton count={5} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : view === "mes" ? (
         <MonthGrid ref_={ref} eventos={eventos} onOpen={(e) => setEditing(e)} />
       ) : view === "semana" ? (
         <WeekList start={range.start} eventos={eventos} onOpen={(e) => setEditing(e)} onDelete={handleDelete} />

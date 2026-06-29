@@ -5,6 +5,9 @@ import {
   useVendas, useMetaFinanceira, useDeleteVenda, useCreateVenda, useUpsertMetaFinanceira,
   useAlunosMin, useProdutosAtivos, useProdutosAdmin, useUpsertProduto, useDeleteProduto,
 } from "@/lib/queries/financeiro";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatsSkeleton } from "@/components/ui/list-skeleton";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
@@ -30,7 +33,7 @@ function FinanceiroPage() {
   const mes = hoje.getMonth() + 1;
   const ano = hoje.getFullYear();
 
-  const { data: vendas = [] } = useVendas(user?.id, !!user && !isAluno);
+  const { data: vendas = [], isLoading, isError, refetch } = useVendas(user?.id, !!user && !isAluno);
   const { data: meta } = useMetaFinanceira(user?.id, mes, ano);
 
   const stats = useMemo(() => {
@@ -84,6 +87,19 @@ function FinanceiroPage() {
         </div>
       </header>
 
+      {isLoading ? (
+        <>
+          <StatsSkeleton count={4} />
+          <Skeleton className="h-24 w-full rounded-2xl" />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Skeleton className="h-64 rounded-2xl lg:col-span-2" />
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
+        </>
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : (
+        <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card icon={DollarSign} label="Receita do mês" value={BRL(stats.receitaMes)} />
         <Card icon={TrendingUp} label="Receita do ano" value={BRL(stats.receitaAno)} />
@@ -142,6 +158,8 @@ function FinanceiroPage() {
           </ul>
         </div>
       </section>
+        </>
+      )}
 
       {showNew && <NovaVendaModal onClose={() => setShowNew(false)} userId={user!.id} />}
       {showProdutos && <ProdutosModal onClose={() => setShowProdutos(false)} />}
