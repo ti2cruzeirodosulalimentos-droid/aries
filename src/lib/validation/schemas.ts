@@ -86,32 +86,21 @@ export const metaSchema = z
 export type MetaInput = z.infer<typeof metaSchema>;
 
 /* ---------------- AVALIAÇÃO FÍSICA ---------------- */
-export const avaliacaoSchema = z.object({
-  data_avaliacao: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
-  peso: reqNum(20, 350, "Peso (kg)"),
-  altura: reqNum(1.0, 2.5, "Altura (m)"),
-  // perímetros (cm)
-  circ_braco_d: optNum(10, 80),
-  circ_braco_e: optNum(10, 80),
-  circ_antebraco_d: optNum(10, 60),
-  circ_antebraco_e: optNum(10, 60),
-  circ_peito: optNum(40, 200),
-  circ_cintura: optNum(40, 200),
-  circ_quadril: optNum(40, 200),
-  circ_coxa_d: optNum(20, 100),
-  circ_coxa_e: optNum(20, 100),
-  circ_panturrilha_d: optNum(15, 70),
-  circ_panturrilha_e: optNum(15, 70),
-  // dobras (mm)
-  dobra_tricipital: optNum(2, 80),
-  dobra_subescapular: optNum(2, 80),
-  dobra_suprailiaca: optNum(2, 80),
-  dobra_abdominal: optNum(2, 80),
-  dobra_coxa: optNum(2, 80),
-  dobra_peitoral: optNum(2, 80),
-  dobra_axilar_media: optNum(2, 80),
-  observacoes: opt(z.string().trim().max(2000)),
-});
+// Porteiro dos campos obrigatórios (data + antropometria base). Os ~60 campos
+// adicionais (perímetros bilaterais, dobras, VO2, neuromotores, postural e
+// resultados calculados) são montados pela tela e passam via .passthrough() —
+// validamos o crítico sem enrijecer o formulário completo.
+export const avaliacaoSchema = z
+  .object({
+    data_avaliacao: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data da avaliação é obrigatória"),
+    peso: reqNum(20, 350, "Peso (kg)"),
+    altura: reqNum(1.0, 2.5, "Altura (m)"),
+    idade: optNum(5, 120),
+    genero: opt(z.enum(["masculino", "feminino"])),
+    protocolo: opt(z.enum(["jp3", "jp7", "obesos"])),
+    observacoes: opt(z.string().trim().max(2000)),
+  })
+  .passthrough();
 export type AvaliacaoInput = z.infer<typeof avaliacaoSchema>;
 
 /* ---------------- ANAMNESE ---------------- */

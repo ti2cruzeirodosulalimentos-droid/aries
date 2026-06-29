@@ -59,6 +59,10 @@ export function useCreateVenda() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: TablesInsert<"vendas">) => {
+      if (!payload.aluno_id || !payload.produto_id) throw new Error("Selecione aluno e produto");
+      const valor = Number(payload.valor_centavos);
+      if (!Number.isFinite(valor) || valor <= 0 || valor > 100_000_000)
+        throw new Error("Valor da venda inválido (R$ 0,01 a R$ 1.000.000)");
       const { error } = await supabase.from("vendas").insert(payload);
       if (error) throw error;
     },
@@ -77,9 +81,11 @@ export function useUpsertMetaFinanceira() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: MetaFinanceiraInput) => {
+      const valor = Number(input.valor_centavos);
+      if (!Number.isFinite(valor) || valor < 0 || valor > 1_000_000_000) throw new Error("Meta inválida");
       const { error } = await supabase
         .from("metas_financeiras")
-        .upsert(input, { onConflict: "personal_id,mes,ano" });
+        .upsert({ ...input, valor_centavos: Math.round(valor) }, { onConflict: "personal_id,mes,ano" });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.metasFin.all }),
@@ -133,6 +139,9 @@ export function useUpsertProduto() {
       const payload: Record<string, any> = { ...form };
       delete payload.created_at;
       delete payload.updated_at;
+      if (!String(payload.nome ?? "").trim()) throw new Error("Nome do produto obrigatório");
+      const preco = Number(payload.preco_centavos);
+      if (!Number.isFinite(preco) || preco < 0 || preco > 100_000_000) throw new Error("Preço inválido");
       if (payload.id) {
         const { error } = await db.from("produtos").update(payload).eq("id", payload.id);
         if (error) throw error;

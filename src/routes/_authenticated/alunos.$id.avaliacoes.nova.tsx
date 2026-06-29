@@ -4,6 +4,7 @@ import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, 
 import { toast } from "sonner";
 import { useAlunoParaAvaliacao, useCreateAvaliacao } from "@/lib/queries/avaliacoes";
 import { useAuth } from "@/lib/auth";
+import { avaliacaoSchema, validate } from "@/lib/validation/schemas";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -111,11 +112,17 @@ function NovaAvaliacao() {
 
   function salvar() {
     if (!user) { toast.error("Sessão expirada"); return; }
-    // Validações críticas
-    if (!v.data_avaliacao) { toast.error("Data da avaliação é obrigatória"); return; }
-    if (v.peso == null || v.peso < 20 || v.peso > 350) { toast.error("Peso inválido (20–350 kg)"); return; }
-    if (v.altura == null || v.altura < 1.0 || v.altura > 2.5) { toast.error("Altura inválida (1.00–2.50 m)"); return; }
-    if (v.idade != null && (v.idade < 5 || v.idade > 120)) { toast.error("Idade inválida"); return; }
+    // Validação central (Zod) dos campos críticos
+    const check = validate(avaliacaoSchema, {
+      data_avaliacao: v.data_avaliacao,
+      peso: v.peso,
+      altura: v.altura,
+      idade: v.idade,
+      genero: v.genero,
+      protocolo: v.protocolo,
+      observacoes: v.observacoes,
+    });
+    if (!check.ok) { toast.error(check.message); return; }
     const bilatPayload: Record<string, number | null> = {};
     for (const [k] of CIRC_BILAT) {
       bilatPayload[`circ_${k}_d`] = v[`circ_${k}_d`] ?? null;
