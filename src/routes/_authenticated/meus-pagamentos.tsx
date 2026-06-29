@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Receipt } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMeusPagamentos } from "@/lib/queries/portal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { RowsSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/meus-pagamentos")({
   head: () => ({ meta: [{ title: "Meus Pagamentos — ARIÉS" }] }),
@@ -12,7 +15,7 @@ const BRL = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency"
 
 function MeusPagamentos() {
   const { user } = useAuth();
-  const { data = [] } = useMeusPagamentos(user?.id);
+  const { data = [], isLoading, isError, refetch } = useMeusPagamentos(user?.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -20,8 +23,12 @@ function MeusPagamentos() {
         <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Seus pagamentos</p>
         <h1 className="font-display text-3xl font-semibold flex items-center gap-2"><Receipt className="text-primary" /> Histórico</h1>
       </header>
-      {!data.length ? (
-        <div className="luxury-card p-10 text-center text-muted-foreground">Nenhum pagamento registrado.</div>
+      {isLoading ? (
+        <RowsSkeleton count={4} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : !data.length ? (
+        <EmptyState icon={Receipt} title="Nenhum pagamento registrado" description="Seu histórico de pagamentos e planos aparecerá aqui." />
       ) : (
         <ul className="space-y-2">
           {data.map((v) => (

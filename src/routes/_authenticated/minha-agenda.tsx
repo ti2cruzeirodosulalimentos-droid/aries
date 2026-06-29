@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Calendar } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMinhaAgenda } from "@/lib/queries/portal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { RowsSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/minha-agenda")({
   head: () => ({ meta: [{ title: "Minha Agenda — ARIÉS" }] }),
@@ -10,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/minha-agenda")({
 
 function MinhaAgenda() {
   const { user } = useAuth();
-  const { data = [] } = useMinhaAgenda(user?.id);
+  const { data = [], isLoading, isError, refetch } = useMinhaAgenda(user?.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -18,8 +21,12 @@ function MinhaAgenda() {
         <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Seus compromissos</p>
         <h1 className="font-display text-3xl font-semibold flex items-center gap-2"><Calendar className="text-primary" /> Próximos eventos</h1>
       </header>
-      {!data.length ? (
-        <div className="luxury-card p-10 text-center text-muted-foreground">Nenhum compromisso agendado.</div>
+      {isLoading ? (
+        <RowsSkeleton count={4} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : !data.length ? (
+        <EmptyState icon={Calendar} title="Nenhum compromisso agendado" description="Seus próximos eventos com o personal aparecerão aqui." />
       ) : (
         <ul className="space-y-2">
           {data.map((e) => (

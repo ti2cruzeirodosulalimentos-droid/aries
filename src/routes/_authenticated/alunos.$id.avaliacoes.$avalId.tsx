@@ -3,6 +3,8 @@ import { useState } from "react";
 import { ArrowLeft, FileDown, Loader2, Trash2, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
+import { ErrorState } from "@/components/ui/error-state";
+import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/$avalId")({
@@ -14,7 +16,7 @@ function AvaliacaoDetail() {
   const navigate = useNavigate();
   const [genPdf, setGenPdf] = useState(false);
 
-  const { data, isLoading } = useAvaliacaoDetail(aluno_id, avalId);
+  const { data, isLoading, isError, refetch } = useAvaliacaoDetail(aluno_id, avalId);
 
   const del = useDeleteAvaliacao(aluno_id);
   function removerAvaliacao() {
@@ -64,9 +66,8 @@ function AvaliacaoDetail() {
     }
   }
 
-  if (isLoading || !data) {
-    return <div className="grid h-40 place-items-center"><Loader2 className="size-8 animate-spin text-primary" /></div>;
-  }
+  if (isLoading) return <DetailSkeleton blocks={3} />;
+  if (isError || !data) return <ErrorState onRetry={() => refetch()} />;
   const a = data.aval;
 
   return (

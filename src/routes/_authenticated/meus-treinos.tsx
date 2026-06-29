@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Dumbbell, Play } from "lucide-react";
 import { usePermissions } from "@/lib/permissions";
 import { useMeusTreinos } from "@/lib/queries/portal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { CardGridSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/meus-treinos")({
   head: () => ({ meta: [{ title: "Meus Treinos — ARIÉS" }] }),
@@ -10,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/meus-treinos")({
 
 function MeusTreinos() {
   const { alunoId } = usePermissions();
-  const { data = [] } = useMeusTreinos(alunoId);
+  const { data = [], isLoading, isError, refetch } = useMeusTreinos(alunoId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -18,8 +21,12 @@ function MeusTreinos() {
         <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Sua rotina</p>
         <h1 className="font-display text-3xl font-semibold flex items-center gap-2"><Dumbbell className="text-primary" /> Meus treinos</h1>
       </header>
-      {!data.length ? (
-        <div className="luxury-card p-10 text-center text-muted-foreground">Nenhum treino cadastrado ainda.</div>
+      {isLoading ? (
+        <CardGridSkeleton count={4} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : !data.length ? (
+        <EmptyState icon={Dumbbell} title="Nenhum treino ainda" description="Quando seu personal montar suas fichas de treino, elas aparecerão aqui." />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {data.map((t) => (
