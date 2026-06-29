@@ -1,112 +1,117 @@
-# Deploy do ARIÉS na VPS (Hostinger) + atualização via GitHub
+# Deploy do ARIÉS na VPS (Hostinger) — modo convivência
 
-Backend: **Supabase gerenciado (free)** — nada muda nele.
-App: **servidor Node** rodando em Docker, atrás do **Caddy** (HTTPS automático).
-CI/CD: **push na `main` → GitHub Actions → VPS atualiza sozinha**.
+⚠️ **Esta VPS já roda outro projeto** (`nf-erp-demo`, com Caddy nas portas **80/443**).
+Por isso o ARIÉS sobe **isolado, numa porta separada (8090)**, **sem tocar** no que já existe.
 
-Dados desta VPS: `187.127.32.134` · hostname grátis `srv1783148.hstgr.cloud` · Ubuntu 24.04 · 8 GB.
+- Backend: **Supabase gerenciado (free)**.
+- App: **servidor Node** em Docker, publicado em `:8090` (sem Caddy próprio).
+- CI/CD: **push na `main` → GitHub Actions → VPS atualiza sozinha**.
+
+Dados: `187.127.32.134` · Ubuntu 24.04 · 8 GB · Docker **já instalado**.
 
 ---
 
-## 0. No Supabase (1 minuto, evita login quebrado)
+## 0. No Supabase (1 min — senão o login não fecha)
 
 Dashboard → **Authentication → URL Configuration**:
-- **Site URL:** `https://srv1783148.hstgr.cloud`
-- **Redirect URLs:** adicione `https://srv1783148.hstgr.cloud/**`
+- **Site URL:** `http://187.127.32.134:8090`
+- **Redirect URLs:** adicione `http://187.127.32.134:8090/**`
 
-(Sem isso, login por e-mail/OAuth e reset de senha falham no domínio novo.)
+(Quando tiver domínio/HTTPS, troque por `https://seu-dominio` — ver passo 6.)
 
 ---
 
-## 1. Preparar a VPS (uma vez)
+## 1. Publicar no GitHub (no seu PC)
 
-Conecte: `ssh root@187.127.32.134`
-
+Crie um repositório **vazio e privado** no github.com e:
 ```bash
-# Docker + Compose
-curl -fsSL https://get.docker.com | sh
-
-# Firewall: libera SSH, HTTP e HTTPS
-ufw allow 22 && ufw allow 80 && ufw allow 443 && ufw --force enable
-
-# Clona o projeto em /opt/aries
-git clone <SEU_REPO_GIT> /opt/aries
-cd /opt/aries
+git remote add origin https://github.com/SEU_USUARIO/SEU_REPO.git
+git push -u origin main
 ```
 
-> No painel da Hostinger, confirme em **Regras de firewall** que 80 e 443 estão liberadas também (lá estava "0").
-
 ---
 
-## 2. Variáveis de ambiente (uma vez)
+## 2. Subir o app na VPS (uma vez)
 
+Conecte (Terminal da Hostinger ou `ssh root@187.127.32.134`):
 ```bash
+# Docker já existe nesta VPS — NÃO reinstalar.
+git clone https://github.com/SEU_USUARIO/SEU_REPO.git /opt/aries
 cd /opt/aries
 cp .env.example .env
-nano .env   # preencha as chaves do Supabase (publishable + secret)
-```
+nano .env     # cole as chaves do Supabase (publishable no VITE_*, secret no SERVICE_ROLE)
 
-> O `.env` fica só na VPS — não é versionado. As `VITE_*` entram no build; as `SUPABASE_SERVICE_ROLE_KEY` etc. são runtime.
+# libera só a porta do ARIÉS (não mexe nas 80/443 do outro projeto)
+ufw allow 8090
 
----
-
-## 3. Primeiro deploy
-
-```bash
-cd /opt/aries
 docker compose up -d --build
 ```
 
-Acesse: **https://srv1783148.hstgr.cloud** (o Caddy emite o certificado na 1ª vez, ~30s).
-Teste no celular pelo mesmo endereço (está público na internet).
+Acesse no PC e no **celular**: **http://187.127.32.134:8090**
 
-> Quer testar só por IP antes do DNS/HTTPS? No `Caddyfile`, troque o hostname por `:80` e use `http://187.127.32.134`.
+> Conferir que não quebrou o ERP: `curl -I http://localhost:80` (deve seguir respondendo) e `docker ps` (os `nf-erp-demo-*` continuam de pé).
+> Se a porta 8090 estiver ocupada, defina `APP_PORT=8095` no `.env` e suba de novo.
+
+---
+
+## 3. Criar seu admin e testar no celular
+
+O e-mail padrão do Supabase é limitado (pode não chegar). Jeito mais confiável, **sem depender de e-mail**:
+
+1. Supabase → **Authentication → Users → Add user** → e-mail + senha + marque **"Auto Confirm User"** → Create.
+2. Supabase → **SQL Editor** → rode (troque o e-mail) pra virar admin:
+   ```sql
+   insert into public.user_roles (user_id, role)
+   select id, 'admin' from auth.users where email = 'admin@aries.app'
+   on conflict do nothing;
+   ```
+3. Logue com esse e-mail/senha em `http://187.127.32.134:8090`.
+
+> Alternativa por CLI (`scripts/create-admin.mjs`): só funciona onde houver Node + `npm i @supabase/supabase-js` (não roda dentro do container de runtime, que não tem node_modules).
 
 ---
 
 ## 4. Atualização automática via GitHub (uma vez)
 
-**4.1 — Gere uma chave SSH só pro deploy (na sua máquina ou na VPS):**
+**4.1** Gere uma chave SSH só pro deploy e instale a pública na VPS:
 ```bash
 ssh-keygen -t ed25519 -f deploy_key -N ""
-# adiciona a PÚBLICA na VPS:
-ssh-copy-id -i deploy_key.pub root@187.127.32.134   # ou cole deploy_key.pub em ~/.ssh/authorized_keys
+ssh-copy-id -i deploy_key.pub root@187.127.32.134
 ```
-
-**4.2 — No GitHub → repositório → Settings → Secrets and variables → Actions → New secret:**
+**4.2** GitHub → repo → Settings → Secrets and variables → Actions:
 | Secret | Valor |
 |---|---|
 | `VPS_HOST` | `187.127.32.134` |
 | `VPS_USER` | `root` |
-| `VPS_SSH_KEY` | conteúdo do arquivo **`deploy_key`** (a chave PRIVADA inteira) |
+| `VPS_SSH_KEY` | conteúdo do arquivo **`deploy_key`** (chave PRIVADA) |
 
-Pronto. O workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) já está no repo.
+Pronto — o workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) faz `git pull && docker compose up -d --build` a cada push na `main`.
 
 ---
 
 ## 5. Dia a dia
 
 ```bash
-git push origin main      # → Actions conecta na VPS, faz git pull + rebuild + restart
+git push origin main            # → deploy automático na VPS
+# na VPS, se precisar:
+cd /opt/aries && docker compose logs -f app
+docker compose restart app
 ```
-
-Acompanhe em **GitHub → aba Actions**.
 
 ---
 
-## Comandos úteis (na VPS)
+## 6. (Opcional, depois) HTTPS + domínio bonito
 
-```bash
-cd /opt/aries
-docker compose logs -f app      # logs do app
-docker compose logs -f caddy    # logs/HTTPS do proxy
-docker compose ps               # status
-docker compose restart app      # reinicia só o app
-docker compose up -d --build    # rebuild manual
-```
+Como o Caddy do `nf-erp-demo` já controla 80/443, o caminho limpo é **adicionar um site no Caddy que já existe** apontando pro ARIÉS — sem subir outro proxy. Isso exige:
+1. um domínio/subdomínio apontando pro IP da VPS (ex.: `aries.seudominio.com`);
+2. um bloco novo no Caddyfile do ERP: `aries.seudominio.com { reverse_proxy 172.17.0.1:8090 }` e recarregar o Caddy.
+
+⚠️ Mexe na config do outro projeto — **me chame quando chegar aqui** que eu te passo o bloco exato depois de ver o Caddyfile do `nf-erp-demo` (`docker compose -f <dir-do-erp> ...`), pra não arriscar derrubar o ERP.
+
+---
 
 ## Problemas comuns
-- **HTTPS não sobe:** confirme que o hostname aponta pro IP e que 80/443 estão abertas (firewall Hostinger + ufw).
-- **Login falha:** revise o passo 0 (URLs no Supabase).
-- **Build estourou memória:** improvável com 8 GB; se ocorrer, `docker builder prune`.
-- **Recursos admin (inativar conta, OCR):** exigem `SUPABASE_SERVICE_ROLE_KEY` (e `LOVABLE_API_KEY` p/ OCR) no `.env`.
+- **Login falha:** revise o passo 0 (URLs no Supabase = `http://187.127.32.134:8090`).
+- **Porta ocupada:** mude `APP_PORT` no `.env`.
+- **Recursos admin / OCR:** exigem `SUPABASE_SERVICE_ROLE_KEY` (e `LOVABLE_API_KEY` p/ OCR) no `.env`.
+- **Nunca** rode aqui nada que prenda 80/443 — é do `nf-erp-demo`.

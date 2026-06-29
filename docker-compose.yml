@@ -1,5 +1,10 @@
-# Deploy do ARIÉS na VPS: app (servidor Node) + Caddy (proxy reverso com HTTPS automático).
-# docker compose lê o arquivo .env (ao lado deste) para preencher os ${...}.
+# ARIÉS na VPS — MODO CONVIVÊNCIA.
+# Esta VPS já roda outro stack (nf-erp-demo) cujo Caddy é dono das portas 80/443.
+# Por isso aqui NÃO subimos Caddy nem tocamos em 80/443: o app sobe isolado,
+# publicado numa porta do host (APP_PORT, padrão 8090). Projeto/redes próprios
+# (dir /opt/aries → nome "aries"), então não há conflito com o nf-erp-demo.
+#
+# docker compose lê o .env ao lado para preencher os ${...}.
 services:
   app:
     build:
@@ -10,6 +15,9 @@ services:
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
     restart: unless-stopped
+    ports:
+      # host:container — troque APP_PORT no .env se 8090 estiver ocupada.
+      - "${APP_PORT:-8090}:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -18,22 +26,3 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       LEMBRETE_HOOK_SECRET: ${LEMBRETE_HOOK_SECRET:-}
       LOVABLE_API_KEY: ${LOVABLE_API_KEY:-}
-    expose:
-      - "3000"
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-
-volumes:
-  caddy_data:
-  caddy_config:
