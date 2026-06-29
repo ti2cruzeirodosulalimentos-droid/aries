@@ -1,9 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { TrendingUp, TrendingDown, Download, FileText } from "lucide-react";
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from "recharts";
 import { useAlunoBasic, useEvolucao } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatsSkeleton } from "@/components/ui/list-skeleton";
 import { toast } from "sonner";
 import { LazyBody3D, type MuscleGroup } from "@/components/3d";
+
+const EvolucaoChart = lazy(() => import("@/components/EvolucaoChart"));
 
 function trend(a: number | null, b: number | null): "up" | "down" | "same" {
   if (a == null || b == null) return "same";
@@ -168,20 +167,9 @@ function EvolucaoPage() {
       <div className="luxury-card p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-primary mb-3">Tendência</p>
         <div ref={chartRef} className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
-              <CartesianGrid stroke="#2A2417" strokeDasharray="3 3" />
-              <XAxis dataKey="data" stroke="#9A9A9A" fontSize={11} />
-              <YAxis yAxisId="left" stroke="#D4AF37" fontSize={11} />
-              <YAxis yAxisId="right" orientation="right" stroke="#F5D76E" fontSize={11} />
-              <Tooltip contentStyle={{ background: "#161616", border: "1px solid #2A2417", borderRadius: 8, color: "#fff" }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line yAxisId="left" type="monotone" dataKey="peso" name="Peso (kg)" stroke="#D4AF37" strokeWidth={2.5} dot={{ r: 4 }} />
-              <Line yAxisId="left" type="monotone" dataKey="massa_magra" name="Massa Magra (kg)" stroke="#34D399" strokeWidth={2} dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="gordura" name="% Gordura" stroke="#F87171" strokeWidth={2} dot={{ r: 3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="imc" name="IMC" stroke="#60A5FA" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 4" />
-            </LineChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<Skeleton className="h-full w-full rounded-xl" />}>
+            <EvolucaoChart data={chartData} />
+          </Suspense>
         </div>
       </div>
 
