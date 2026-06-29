@@ -30,6 +30,17 @@ export function RowsSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
+/** Grade de cards de conteúdo (metas, treinos e outras telas em grade). */
+export function CardGridSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2" aria-busy="true" aria-live="polite">
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} className="h-40 rounded-2xl" />
+      ))}
+    </div>
+  );
+}
+
 /** Grade de cards de métrica (dashboard, financeiro, resumos). */
 export function StatsSkeleton({ count = 4 }: { count?: number }) {
   return (

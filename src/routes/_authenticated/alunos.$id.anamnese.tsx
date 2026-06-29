@@ -4,6 +4,8 @@ import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useAnamnese, useSaveAnamnese } from "@/lib/queries/aluno-modulos";
+import { ErrorState } from "@/components/ui/error-state";
+import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -32,7 +34,7 @@ function AnamnesePage() {
   const { user } = useAuth();
   const [v, setV] = useState<Anamnese>({});
 
-  const { data: existing, isLoading } = useAnamnese(aluno_id);
+  const { data: existing, isLoading, isError, refetch } = useAnamnese(aluno_id);
 
   useEffect(() => {
     if (existing) setV(existing);
@@ -73,7 +75,8 @@ function AnamnesePage() {
     );
   }
 
-  if (isLoading) return <div className="grid h-40 place-items-center"><Loader2 className="size-8 animate-spin text-primary" /></div>;
+  if (isLoading) return <DetailSkeleton blocks={4} />;
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
 
   return (
     <form onSubmit={submit} className="space-y-6">

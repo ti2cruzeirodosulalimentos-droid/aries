@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Upload, Camera, Trash2, X, GitCompareArrows } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useFotos, useRemoveFoto, useUploadFotos, useSignedUrl } from "@/lib/queries/aluno-modulos";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +29,7 @@ function FotosPage() {
   const [open, setOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
 
-  const { data: fotos, isLoading } = useFotos(id);
+  const { data: fotos, isLoading, isError, refetch } = useFotos(id);
   const remove = useRemoveFoto(id);
 
   const sessoes = useMemo(() => {
@@ -57,15 +60,19 @@ function FotosPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid h-40 place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>
-      ) : sessoes.length === 0 ? (
-        <div className="luxury-card p-12 text-center">
-          <Camera className="size-12 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-muted-foreground mb-4">Nenhuma foto de evolução registrada.</p>
-          <Button onClick={() => setOpen(true)} className="bg-primary text-primary-foreground hover:opacity-90">
-            <Upload className="size-4" /> Adicionar primeira sessão
-          </Button>
+        <div className="space-y-4" aria-busy="true">
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : sessoes.length === 0 ? (
+        <EmptyState
+          icon={Camera}
+          title="Nenhuma foto registrada"
+          description="Registre sessões de fotos (frente, lateral e costas) para acompanhar a transformação."
+          action={{ label: "Adicionar primeira sessão", onClick: () => setOpen(true), icon: Upload }}
+        />
       ) : (
         <div className="space-y-6">
           {sessoes.map(([data, lista]) => (

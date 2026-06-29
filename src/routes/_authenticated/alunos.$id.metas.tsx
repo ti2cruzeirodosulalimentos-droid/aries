@@ -3,6 +3,9 @@ import { useState } from "react";
 import { Plus, Target as TargetIcon, Trash2, X, CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useMetas, useCreateMeta, useUpdateMeta, useRemoveMeta } from "@/lib/queries/aluno-modulos";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { CardGridSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +31,7 @@ function MetasPage() {
   const { id } = Route.useParams();
   const [open, setOpen] = useState(false);
 
-  const { data, isLoading } = useMetas(id);
+  const { data, isLoading, isError, refetch } = useMetas(id);
   const update = useUpdateMeta(id);
   const remove = useRemoveMeta(id);
 
@@ -45,15 +48,16 @@ function MetasPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid h-40 place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>
+        <CardGridSkeleton count={4} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
       ) : (data?.length ?? 0) === 0 ? (
-        <div className="luxury-card p-12 text-center">
-          <TargetIcon className="size-12 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-muted-foreground mb-4">Nenhuma meta definida.</p>
-          <Button onClick={() => setOpen(true)} className="bg-primary text-primary-foreground hover:opacity-90">
-            <Plus className="size-4" /> Criar primeira meta
-          </Button>
-        </div>
+        <EmptyState
+          icon={TargetIcon}
+          title="Nenhuma meta definida"
+          description="Defina objetivos mensuráveis para acompanhar a evolução do aluno."
+          action={{ label: "Criar primeira meta", onClick: () => setOpen(true), icon: Plus }}
+        />
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {data!.map((m: any) => (

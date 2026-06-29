@@ -6,6 +6,10 @@ import {
 } from "recharts";
 import { useAlunoBasic, useEvolucao } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatsSkeleton } from "@/components/ui/list-skeleton";
 import { toast } from "sonner";
 import { LazyBody3D, type MuscleGroup } from "@/components/3d";
 
@@ -34,7 +38,7 @@ function EvolucaoPage() {
   const [exporting, setExporting] = useState(false);
 
   const { data: aluno } = useAlunoBasic(id);
-  const { data, isLoading } = useEvolucao<Row>(id);
+  const { data, isLoading, isError, refetch } = useEvolucao<Row>(id);
 
   const chartData = useMemo(() => (data ?? []).map((r) => ({
     data: formatDate(r.data_avaliacao),
@@ -101,14 +105,22 @@ function EvolucaoPage() {
   }
 
   if (isLoading) {
-    return <div className="grid h-40 place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
+    return (
+      <div className="space-y-5">
+        <StatsSkeleton count={4} />
+        <Skeleton className="h-72 w-full rounded-2xl" />
+      </div>
+    );
   }
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!data || data.length === 0) {
     return (
-      <div className="luxury-card p-12 text-center">
-        <FileText className="size-12 mx-auto text-muted-foreground/40 mb-3" />
-        <p className="text-muted-foreground">Nenhuma avaliação física ainda. Cadastre avaliações para visualizar a evolução.</p>
-      </div>
+      <EmptyState
+        icon={FileText}
+        title="Sem dados de evolução"
+        description="Cadastre avaliações físicas para visualizar gráficos e tendências de evolução."
+        action={{ label: "Nova avaliação", to: "/alunos/$id/avaliacoes/nova", params: { id }, icon: TrendingUp }}
+      />
     );
   }
 
