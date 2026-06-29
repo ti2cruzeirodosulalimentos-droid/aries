@@ -3,6 +3,9 @@ import { Users, Activity, TrendingUp, Clock, Plus, DollarSign, Calendar, Target,
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import { useDashboardAluno, useDashboardPro } from "@/lib/queries/dashboard";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatsSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — ARIÉS" }] }),
@@ -18,7 +21,7 @@ function Dashboard() {
 }
 
 function DashboardPro({ userId, role }: { userId?: string; role: string }) {
-  const { data: stats } = useDashboardPro(userId);
+  const { data: stats, isLoading, isError, refetch } = useDashboardPro(userId);
 
   const pctMeta = stats?.meta ? Math.min(100, Math.round((stats.receitaMes / stats.meta) * 100)) : 0;
 
@@ -45,6 +48,18 @@ function DashboardPro({ userId, role }: { userId?: string; role: string }) {
         </Link>
       </header>
 
+      {isLoading ? (
+        <>
+          <StatsSkeleton count={8} />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Skeleton className="h-40 rounded-2xl lg:col-span-2" />
+            <Skeleton className="h-40 rounded-2xl" />
+          </div>
+        </>
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : (
+        <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => {
           const Icon = c.icon;
@@ -83,6 +98,8 @@ function DashboardPro({ userId, role }: { userId?: string; role: string }) {
           <Link to="/agenda" className="mt-3 inline-block text-xs text-primary hover:underline">Abrir Agenda →</Link>
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

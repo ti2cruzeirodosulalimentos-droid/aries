@@ -4,6 +4,9 @@ import { MessageCircle, Plus, Pencil, Trash2, Save, X, Mail, Phone } from "lucid
 import { usePermissions } from "@/lib/permissions";
 import { useAuth } from "@/lib/auth";
 import { type Template, useDeleteTemplate, useMensagensTemplates, useUpsertTemplate } from "@/lib/queries/mensagens";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { RowsSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +25,7 @@ function MensagensPage() {
   const { user } = useAuth();
   const [editing, setEditing] = useState<Template | null>(null);
 
-  const { data: templates } = useMensagensTemplates();
+  const { data: templates, isLoading, isError, refetch } = useMensagensTemplates();
   const saveMut = useUpsertTemplate();
   const deleteMut = useDeleteTemplate();
 
@@ -70,7 +73,19 @@ function MensagensPage() {
       </div>
 
       <div className="grid gap-3">
-        {templates?.map((t) => (
+        {isLoading ? (
+          <RowsSkeleton count={4} />
+        ) : isError ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : !templates?.length ? (
+          <EmptyState
+            icon={MessageCircle}
+            title="Nenhum template ainda"
+            description="Crie mensagens reutilizáveis para enviar por WhatsApp ou e-mail a partir da ficha do aluno."
+            action={{ label: "Novo template", onClick: () => setEditing({ id: "", ...EMPTY }), icon: Plus }}
+          />
+        ) : (
+          templates.map((t) => (
           <div key={t.id} className="luxury-card p-4 flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <div>
@@ -94,12 +109,7 @@ function MensagensPage() {
             </div>
             <p className="text-sm whitespace-pre-wrap text-foreground/90">{t.corpo}</p>
           </div>
-        ))}
-        {!templates?.length && (
-          <div className="luxury-card p-12 text-center">
-            <MessageCircle className="mx-auto size-12 text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">Nenhum template ainda. Crie o primeiro acima.</p>
-          </div>
+          ))
         )}
       </div>
 

@@ -3,6 +3,9 @@ import { useState, useMemo } from "react";
 import { Plus, Search, Dumbbell, Trash2, X, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useCreateExercicio, useDeleteExercicio, useExercicios } from "@/lib/queries/exercicios";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +42,7 @@ function ExerciciosPage() {
   const [open, setOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<any>(null);
 
-  const { data, isLoading } = useExercicios();
+  const { data, isLoading, isError, refetch } = useExercicios();
 
   const grupos = useMemo(() => Array.from(new Set((data ?? []).map((e: any) => e.grupo_muscular))) as string[], [data]);
   const filtered = (data ?? []).filter((e: any) => {
@@ -80,7 +83,18 @@ function ExerciciosPage() {
         </div>
 
         {isLoading ? (
-          <div className="grid h-40 place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />)}
+          </div>
+        ) : isError ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={Dumbbell}
+            title={q || grupo ? "Nada encontrado" : "Biblioteca vazia"}
+            description={q || grupo ? "Ajuste a busca ou os filtros para encontrar exercícios." : "Cadastre o primeiro exercício da sua biblioteca."}
+            action={!q && !grupo ? { label: "Novo exercício", onClick: () => setOpen(true), icon: Plus } : undefined}
+          />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((e: any) => (
@@ -132,7 +146,6 @@ function ExerciciosPage() {
                 </div>
               </button>
             ))}
-            {filtered.length === 0 ? <p className="col-span-full text-center text-sm text-muted-foreground py-10">Nada encontrado.</p> : null}
           </div>
         )}
 
