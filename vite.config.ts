@@ -12,4 +12,8 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Fora do sandbox Lovable (build na VPS / GitHub Actions), gera um servidor
+  // Node executável em .output/server/index.mjs (rodável com `node`). Dentro do
+  // sandbox o wrapper força o preset Cloudflare e ignora isto — seguro manter.
+  nitro: { preset: "node-server" },
 });

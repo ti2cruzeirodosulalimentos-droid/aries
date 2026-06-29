@@ -1,0 +1,28 @@
+name: Deploy para a VPS
+
+# Dispara a cada push na main (e manualmente pelo botão "Run workflow").
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Atualiza e sobe na VPS via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/aries
+            git pull --ff-only
+            docker compose up -d --build
+            docker image prune -f

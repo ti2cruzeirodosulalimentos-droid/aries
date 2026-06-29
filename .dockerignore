@@ -1,0 +1,17 @@
+node_modules
+.output
+dist
+dist-ssr
+.tanstack
+.nitro
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+.vscode
+.idea
+.DS_Store
+docs
+scripts
