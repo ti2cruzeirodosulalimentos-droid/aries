@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { TEMPLATES, ajustarItem, type Template, type AjusteNivel } from "@/lib/treinos/templates";
 import { extractTreinoFromImage } from "@/lib/admin.functions";
+import { ErrorState } from "@/components/ui/error-state";
 import { RowsSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/alunos/$id/treinos/")({
@@ -34,7 +35,7 @@ function TreinosList() {
   const extractFn = useServerFn(extractTreinoFromImage);
   const [ocrLoading, setOcrLoading] = useState(false);
 
-  const { data: treinos, isLoading } = useTreinosList(id);
+  const { data: treinos, isLoading, isError, refetch } = useTreinosList(id);
 
   const criar = useCriarTreino(id, user?.id);
   const excluir = useExcluirTreino(id);
@@ -95,6 +96,8 @@ function TreinosList() {
 
       {isLoading ? (
         <RowsSkeleton count={4} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
       ) : (treinos?.length ?? 0) === 0 ? (
         <div className="luxury-card p-12 text-center space-y-4">
           <Dumbbell className="size-12 mx-auto text-muted-foreground/40" />

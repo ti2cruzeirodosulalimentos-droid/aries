@@ -2,6 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, RotateCcw, Check, Dumbbell, Timer } from "lucide-react";
 import { useTreino, useTreinoExec } from "@/lib/queries/treinos";
+import { ErrorState } from "@/components/ui/error-state";
+import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -14,7 +16,7 @@ function ExecutarTreino() {
   const navigate = useNavigate();
 
   const { data: treino } = useTreino(treinoId);
-  const { data: itens, isLoading } = useTreinoExec(treinoId);
+  const { data: itens, isLoading, isError, refetch } = useTreinoExec(treinoId);
 
   const [idx, setIdx] = useState(0);
   const [serie, setSerie] = useState(1);
@@ -91,9 +93,8 @@ function ExecutarTreino() {
     }
   }
 
-  if (isLoading) {
-    return <div className="grid h-60 place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
-  }
+  if (isLoading) return <DetailSkeleton blocks={2} />;
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!itens || itens.length === 0) {
     return (
       <div className="luxury-card p-10 text-center space-y-3">

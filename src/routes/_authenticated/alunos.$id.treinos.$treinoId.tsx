@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { ArrowLeft, Plus, Trash2, GripVertical, Save, Search, X, PlayCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Search, X, PlayCircle, Dumbbell } from "lucide-react";
 import {
   useTreino,
   useTreinoExercicios,
@@ -13,6 +13,9 @@ import {
   type TreinoExercicioRow as TE,
 } from "@/lib/queries/treinos";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { RowsSkeleton } from "@/components/ui/list-skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,7 +50,7 @@ function TreinoEditor() {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data: treino } = useTreino(treinoId);
-  const { data: itens, isLoading } = useTreinoExercicios(treinoId);
+  const { data: itens, isLoading, isError, refetch } = useTreinoExercicios(treinoId);
 
   const salvarTreino = useSalvarTreino(treinoId, id);
   const adicionarEx = useAdicionarExercicio(treinoId);
@@ -104,7 +107,9 @@ function TreinoEditor() {
       ) : null}
 
       {isLoading ? (
-        <div className="grid h-40 place-items-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>
+        <RowsSkeleton count={4} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
       ) : itens && itens.length > 0 ? (
         <div className="space-y-3">
           {itens.map((it, idx) => (
@@ -120,9 +125,12 @@ function TreinoEditor() {
           ))}
         </div>
       ) : (
-        <div className="luxury-card p-10 text-center text-muted-foreground">
-          Nenhum exercício adicionado ainda.
-        </div>
+        <EmptyState
+          icon={Dumbbell}
+          title="Nenhum exercício ainda"
+          description="Monte a ficha adicionando exercícios da biblioteca."
+          action={{ label: "Adicionar exercício", onClick: () => setPickerOpen(true), icon: Plus }}
+        />
       )}
 
       {pickerOpen ? <ExercicioPicker onClose={() => setPickerOpen(false)} onPick={(exId) => { adicionarEx.mutate(exId, { onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao adicionar") }); setPickerOpen(false); }} /> : null}
