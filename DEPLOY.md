@@ -42,7 +42,7 @@ cd /opt/aries
 
 ```bash
 cd /opt/aries
-cp .env.production.example .env
+cp .env.example .env
 nano .env   # preencha as chaves do Supabase (publishable + secret)
 ```
 
