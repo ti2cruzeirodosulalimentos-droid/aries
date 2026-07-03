@@ -452,7 +452,9 @@ function NovaAvaliacao() {
 
 function PosturalPanel({ v, set }: { v: Record<string, any>; set: (k: string, val: any) => void }) {
   const [tab, setTab] = useState<PosturalView>("anterior");
-  const [mode, setMode] = useState<"3d" | "svg">("3d");
+  // Abre no SVG (funciona sem o modelo 3D). O 3D fica disponível pelo toggle
+  // e volta a ser padrão quando o mannequin.glb estiver hospedado no deploy.
+  const [mode, setMode] = useState<"3d" | "svg">("svg");
   const selected: string[] = v.postural?.[tab] ?? [];
   const toggle = (item: string) => {
     const cur = v.postural ?? {};
