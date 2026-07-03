@@ -6,8 +6,9 @@ FROM node:22-bookworm AS build
 WORKDIR /app
 
 # Instala dependências primeiro (cache de camada).
+# npm install (não ci) tolera pequenas defasagens do package-lock.json.
 COPY package*.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # Código do app.
 COPY . .
