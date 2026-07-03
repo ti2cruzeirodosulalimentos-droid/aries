@@ -17,7 +17,9 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "worker-src 'self' blob:",
-  "upgrade-insecure-requests",
+  // NÃO usar "upgrade-insecure-requests": quebra o deploy em HTTP (força os
+  // assets same-origin pra HTTPS numa porta que só fala HTTP → tela branca).
+  // O app usa URLs relativas, então não há http:// para "upgradar" mesmo.
 ].join("; ");
 
 /** Aplica headers de segurança (OWASP) em todas as respostas. */
