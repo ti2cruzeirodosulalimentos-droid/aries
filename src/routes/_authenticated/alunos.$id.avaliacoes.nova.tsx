@@ -300,7 +300,7 @@ function NovaAvaliacao() {
       {view === "composicao" && (
         <>
           <Section title="Antropometria & Sinais Vitais">
-            <div className="grid gap-3 grid-cols-2">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               <Field label="Peso (kg) *"><NumInput value={v.peso} onChange={num("peso")} step="0.1" /></Field>
               <Field label="Altura (m ou cm) *">
                 <Input
@@ -333,7 +333,7 @@ function NovaAvaliacao() {
             ) : (() => {
               const required = requiredDobras(v.protocolo, v.genero);
               return (
-                <div className="grid gap-3 grid-cols-2">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                   {DOBRAS.map(([k, label]) => {
                     const isReq = required.includes(k);
                     return (
@@ -366,7 +366,7 @@ function NovaAvaliacao() {
       {view === "perimetros" && (
         <>
           <Section title="Centrais (cm)">
-            <div className="grid gap-3 grid-cols-2">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               {CIRC.map(([k, label]) => (
                 <Field key={k} label={label}><NumInput value={v[k]} onChange={num(k)} step="0.1" /></Field>
               ))}
@@ -387,7 +387,7 @@ function NovaAvaliacao() {
             </div>
           </Section>
           <Section title="Diâmetro Ósseo (cm)">
-            <div className="grid gap-3 grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
               {DIAMETROS.map(([k, label]) => (
                 <Field key={k} label={label}><NumInput value={v[k]} onChange={num(k)} step="0.1" /></Field>
               ))}
@@ -398,7 +398,7 @@ function NovaAvaliacao() {
 
       {view === "vo2" && (
         <Section title="VO2 Máx">
-          <div className="grid gap-3 grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <div className="col-span-2">
               <Field label="Protocolo">
                 <Select value={v.vo2_protocolo ?? ""} onValueChange={(val) => set("vo2_protocolo", val)}>
@@ -424,7 +424,7 @@ function NovaAvaliacao() {
 
       {view === "neuro" && (
         <Section title="Testes Neuromotores">
-          <div className="grid gap-3 grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <Field label="Preensão D. (kgf)"><NumInput value={v.neuro_preensao_d} onChange={num("neuro_preensao_d")} step="0.1" /></Field>
             <Field label="Preensão E. (kgf)"><NumInput value={v.neuro_preensao_e} onChange={num("neuro_preensao_e")} step="0.1" /></Field>
             <Field label="Sentar-alcançar (cm)"><NumInput value={v.neuro_sentar_alcancar} onChange={num("neuro_sentar_alcancar")} step="0.1" /></Field>

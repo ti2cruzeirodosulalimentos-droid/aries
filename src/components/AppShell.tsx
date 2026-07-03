@@ -133,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {open && <div onClick={() => setOpen(false)} className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" />}
 
         <main className="min-h-dvh flex-1 px-4 py-6 md:px-10 md:py-10">
-          <div key={pathname} className="page-enter">
+          <div key={pathname} className="page-enter overflow-x-clip">
             {children}
           </div>
         </main>
