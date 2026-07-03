@@ -24,7 +24,8 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
 
 # Fora do sandbox Lovable → nitro usa o preset node-server (vite.config.ts)
 # e gera .output/server/index.mjs com as deps já empacotadas.
-RUN npm run build
+# Aumenta o heap do Node: o bundling do nitro (three, react-pdf…) estoura os ~2GB padrão.
+RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build
 
 # ─── Runtime ───────────────────────────────────────────────────────────────
 # Imagem slim: só precisa do .output (deps já vêm bundladas pelo nitro).
