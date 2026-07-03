@@ -121,7 +121,30 @@ function FinanceiroPage() {
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="luxury-card p-5 lg:col-span-2">
           <h2 className="font-display text-lg mb-3">Últimas vendas</h2>
-          <div className="overflow-x-auto">
+          {/* Celular: cards */}
+          <div className="space-y-2 sm:hidden">
+            {vendas.slice(0, 20).map((v) => (
+              <div key={v.id} className="rounded-lg border border-border/40 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{(v.alunos as { full_name?: string } | null)?.full_name ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{(v.produtos as { nome?: string } | null)?.nome ?? "—"}</p>
+                  </div>
+                  <button onClick={() => removerVenda(v.id)} className="shrink-0 text-destructive/70 hover:text-destructive">
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{new Date(v.data_venda).toLocaleDateString("pt-BR")}</span>
+                  <span className="font-semibold gold-text">{BRL(v.valor_centavos)}</span>
+                </div>
+              </div>
+            ))}
+            {!vendas.length && <p className="py-6 text-center text-muted-foreground">Nenhuma venda registrada</p>}
+          </div>
+
+          {/* Desktop: tabela */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-sm">
               <thead className="text-xs uppercase tracking-wider text-muted-foreground">
                 <tr><th className="text-left py-2">Data</th><th className="text-left">Aluno</th><th className="text-left">Produto</th><th className="text-right">Valor</th><th></th></tr>

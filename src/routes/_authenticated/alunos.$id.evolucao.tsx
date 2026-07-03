@@ -173,29 +173,53 @@ function EvolucaoPage() {
         </div>
       </div>
 
-      <div className="luxury-card p-4 overflow-x-auto">
+      <div className="luxury-card p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-primary mb-3">Histórico</p>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
-              <th className="py-2">Data</th><th className="py-2 text-right">Peso</th>
-              <th className="py-2 text-right">% Gord.</th><th className="py-2 text-right">M. Magra</th>
-              <th className="py-2 text-right">M. Gorda</th><th className="py-2 text-right">IMC</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.slice().reverse().map((r) => (
-              <tr key={r.id} className="border-b border-border/40">
-                <td className="py-2">{formatDate(r.data_avaliacao)}</td>
-                <td className="py-2 text-right">{fmt(r.peso, " kg")}</td>
-                <td className="py-2 text-right">{fmt(r.percentual_gordura, "%")}</td>
-                <td className="py-2 text-right">{fmt(r.massa_magra, " kg")}</td>
-                <td className="py-2 text-right">{fmt(r.massa_gorda, " kg")}</td>
-                <td className="py-2 text-right">{fmt(r.imc)}</td>
+
+        {/* Celular: cards */}
+        <div className="space-y-2 sm:hidden">
+          {data.slice().reverse().map((r) => (
+            <div key={r.id} className="rounded-lg border border-border/40 p-3">
+              <p className="font-medium">{formatDate(r.data_avaliacao)}</p>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ["Peso", fmt(r.peso, " kg")], ["% Gord.", fmt(r.percentual_gordura, "%")], ["IMC", fmt(r.imc)],
+                  ["M. Magra", fmt(r.massa_magra, " kg")], ["M. Gorda", fmt(r.massa_gorda, " kg")],
+                ].map(([l, val]) => (
+                  <div key={l}>
+                    <span className="block text-[9px] uppercase tracking-wider text-muted-foreground">{l}</span>
+                    <span className="text-sm font-medium">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: tabela */}
+        <div className="hidden overflow-x-auto sm:block">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
+                <th className="py-2">Data</th><th className="py-2 text-right">Peso</th>
+                <th className="py-2 text-right">% Gord.</th><th className="py-2 text-right">M. Magra</th>
+                <th className="py-2 text-right">M. Gorda</th><th className="py-2 text-right">IMC</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.slice().reverse().map((r) => (
+                <tr key={r.id} className="border-b border-border/40">
+                  <td className="py-2">{formatDate(r.data_avaliacao)}</td>
+                  <td className="py-2 text-right">{fmt(r.peso, " kg")}</td>
+                  <td className="py-2 text-right">{fmt(r.percentual_gordura, "%")}</td>
+                  <td className="py-2 text-right">{fmt(r.massa_magra, " kg")}</td>
+                  <td className="py-2 text-right">{fmt(r.massa_gorda, " kg")}</td>
+                  <td className="py-2 text-right">{fmt(r.imc)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
