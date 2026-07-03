@@ -140,8 +140,20 @@
 
 html, body { background: var(--background); color: var(--foreground); }
 
+/* Trava definitiva contra scroll horizontal em qualquer tela (mobile).
+   overflow-x hidden no root garante que nada role/faça arrastar pro lado;
+   max-width 100% impede qualquer filho de esticar além da viewport. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+    /* Evita palavras/strings longas (e-mails, nomes) estourarem a largura. */
+    min-width: 0;
+  }
   body {
     font-family: var(--font-sans);
     background-color: var(--color-background);
@@ -149,6 +161,8 @@ html, body { background: var(--background); color: var(--foreground); }
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  /* Mídia nunca ultrapassa o contêiner. */
+  img, svg, video, canvas { max-width: 100%; }
 }
 
 @utility gold-text {
