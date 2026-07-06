@@ -13,11 +13,11 @@ type EmptyStateProps = {
 export function EmptyState({ icon: Icon, title, description, action, children }: EmptyStateProps) {
   const ActionIcon = action?.icon;
   return (
-    <div className="luxury-card grid place-items-center rounded-2xl px-6 py-14 text-center">
+    <div className="luxury-card flex flex-col items-center justify-center rounded-2xl px-6 py-14 text-center">
       {Icon ? <Icon className="mb-3 size-10 text-primary" aria-hidden="true" /> : null}
       <h3 className="font-display text-xl">{title}</h3>
       {description ? (
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
+        <p className="mt-1 max-w-full text-sm text-muted-foreground sm:max-w-sm">{description}</p>
       ) : null}
       {action ? (
         action.to ? (

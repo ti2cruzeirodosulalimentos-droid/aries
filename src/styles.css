@@ -149,7 +149,12 @@ html, body {
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+    /* Deixa itens de flex/grid encolherem em vez de estourar a tela.
+       Abas e itens que NÃO devem encolher usam `shrink-0` no componente. */
+    min-width: 0;
+  }
   body {
     font-family: var(--font-sans);
     background-color: var(--color-background);
