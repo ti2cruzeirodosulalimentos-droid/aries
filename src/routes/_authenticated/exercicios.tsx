@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LazyBody3D, type MuscleGroup } from "@/components/3d";
+import { BodyMuscleMap } from "@/components/BodyMuscleMap";
+import type { MuscleGroup } from "@/components/3d";
 
 import { toast } from "sonner";
 
@@ -190,7 +191,7 @@ function DetalheModal({ exercicio, onClose }: { exercicio: any; onClose: () => v
 
           <div>
             <p className="text-xs uppercase tracking-wider text-primary mb-2">Músculos trabalhados</p>
-            <LazyBody3D highlight={[...grupoTo3D(exercicio.grupo_muscular), ...((exercicio.musculos_alvo ?? []) as MuscleGroup[])]} height={320} />
+            <BodyMuscleMap highlight={[...grupoTo3D(exercicio.grupo_muscular), ...((exercicio.musculos_alvo ?? []) as MuscleGroup[])]} />
           </div>
           {exercicio.musculos_secundarios ? (
             <div>

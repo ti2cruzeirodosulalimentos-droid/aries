@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LazyBody3D, type MuscleGroup } from "@/components/3d";
+import { BodyMuscleMap } from "@/components/BodyMuscleMap";
+import type { MuscleGroup } from "@/components/3d";
 
 function mapGrupo(g?: string | null): MuscleGroup | null {
   if (!g) return null;
@@ -99,9 +100,8 @@ function TreinoEditor() {
       {itens && itens.length > 0 ? (
         <div className="luxury-card p-4">
           <p className="text-[10px] uppercase tracking-[0.3em] text-primary mb-2">Músculos trabalhados neste treino</p>
-          <LazyBody3D
+          <BodyMuscleMap
             highlight={Array.from(new Set(itens.map((i) => mapGrupo(i.exercicio?.grupo_muscular)).filter(Boolean))) as MuscleGroup[]}
-            height={320}
           />
         </div>
       ) : null}

@@ -8,7 +8,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatsSkeleton } from "@/components/ui/list-skeleton";
 import { toast } from "sonner";
-import { LazyBody3D, type MuscleGroup } from "@/components/3d";
+import { BodyMuscleMap } from "@/components/BodyMuscleMap";
 
 const EvolucaoChart = lazy(() => import("@/components/EvolucaoChart"));
 
@@ -148,7 +148,7 @@ function EvolucaoPage() {
         <div className="luxury-card p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-primary mb-2">Heatmap Corporal (1ª avaliação vs atual)</p>
           <p className="text-[11px] text-muted-foreground mb-2">Verde = reduziu · Vermelho = aumentou · Cinza = estável</p>
-          <LazyBody3D
+          <BodyMuscleMap
             heatmap={{
               abdomen: trend(summary.last.circ_cintura, summary.first.circ_cintura),
               lombar: trend(summary.last.circ_cintura, summary.first.circ_cintura),
@@ -159,7 +159,6 @@ function EvolucaoPage() {
               biceps: trend(summary.first.massa_magra, summary.last.massa_magra),
               triceps: trend(summary.first.massa_magra, summary.last.massa_magra),
             }}
-            height={360}
           />
         </div>
       )}

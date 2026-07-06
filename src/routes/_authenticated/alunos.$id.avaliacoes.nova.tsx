@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { calcularAvaliacao, type Protocolo, type Genero } from "@/lib/calculos/fisica";
 import { PosturalBody, type PosturalView } from "@/components/PosturalBody";
-import { LazyBody3D, type PosturalRegion } from "@/components/3d";
 
 export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/nova")({
   component: NovaAvaliacao,
@@ -452,9 +451,6 @@ function NovaAvaliacao() {
 
 function PosturalPanel({ v, set }: { v: Record<string, any>; set: (k: string, val: any) => void }) {
   const [tab, setTab] = useState<PosturalView>("anterior");
-  // Abre no SVG (funciona sem o modelo 3D). O 3D fica disponível pelo toggle
-  // e volta a ser padrão quando o mannequin.glb estiver hospedado no deploy.
-  const [mode, setMode] = useState<"3d" | "svg">("svg");
   const selected: string[] = v.postural?.[tab] ?? [];
   const toggle = (item: string) => {
     const cur = v.postural ?? {};
@@ -462,23 +458,6 @@ function PosturalPanel({ v, set }: { v: Record<string, any>; set: (k: string, va
     const next = list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
     set("postural", { ...cur, [tab]: next });
   };
-
-  // Mapeia região 3D → item postural representativo
-  const REGION_MAP: Record<PosturalRegion, string> = {
-    cabeca: "Inclinação de cabeça",
-    ombro_d: "Ombros assimétricos",
-    ombro_e: "Ombros assimétricos",
-    coluna: tab === "posterior" ? "Escoliose" : "Hiperlordose Lombar",
-    quadril: tab === "lateral" ? "Anteversão de Quadril" : "Báscula pélvica",
-    joelho_d: "Joelhos valgos",
-    joelho_e: "Joelhos valgos",
-    pe_d: tab === "lateral" ? "Pé - Plano" : "Pés pronados",
-    pe_e: tab === "lateral" ? "Pé - Plano" : "Pés pronados",
-  };
-
-  // Marcadores ativos no 3D = regiões cujo item correspondente está marcado
-  const activeRegions: PosturalRegion[] = (Object.keys(REGION_MAP) as PosturalRegion[])
-    .filter((r) => selected.includes(REGION_MAP[r]));
 
   return (
     <Section title="Avaliação Postural">
@@ -495,30 +474,11 @@ function PosturalPanel({ v, set }: { v: Record<string, any>; set: (k: string, va
         ))}
       </div>
 
-      <div className="flex justify-end mb-2">
-        <button
-          type="button"
-          onClick={() => setMode(mode === "3d" ? "svg" : "3d")}
-          className="text-[11px] uppercase tracking-wider text-primary border border-primary/40 rounded-full px-3 py-1"
-        >
-          {mode === "3d" ? "Modo leve (SVG)" : "Modo 3D"}
-        </button>
-      </div>
-
       <p className="text-xs text-muted-foreground mb-2 text-center">
-        {mode === "3d" ? "Arraste para girar · pinça para zoom · toque nas esferas para marcar" : "Toque nos pontos do corpo ou marque na lista"}
+        Toque nos pontos do corpo ou marque na lista
       </p>
 
-      {mode === "3d" ? (
-        <LazyBody3D
-          gender={v.genero === "feminino" ? "feminino" : "masculino"}
-          onRegionClick={(r) => toggle(REGION_MAP[r])}
-          activeRegions={activeRegions}
-          height={400}
-        />
-      ) : (
-        <PosturalBody view={tab} items={POSTURAL[tab]} selected={selected} onToggle={toggle} />
-      )}
+      <PosturalBody view={tab} items={POSTURAL[tab]} selected={selected} onToggle={toggle} />
 
       <div className="mt-4 grid gap-1.5">
         {POSTURAL[tab].map((item) => (
