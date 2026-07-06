@@ -90,7 +90,7 @@ function AlunoLayout() {
         </div>
       </div>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-border">
+      <nav className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 md:mx-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => {
           const active = t.exact ? pathname === t.to : pathname.startsWith(t.to);
           const Icon = t.icon;
@@ -98,7 +98,7 @@ function AlunoLayout() {
             <Link
               key={t.to}
               to={t.to}
-              className={`flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm transition border-b-2 ${
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-3 text-sm transition border-b-2 ${
                 active ? "border-primary text-primary font-semibold" : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >

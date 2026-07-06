@@ -149,11 +149,7 @@ html, body {
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-    /* Evita palavras/strings longas (e-mails, nomes) estourarem a largura. */
-    min-width: 0;
-  }
+  * { border-color: var(--color-border); }
   body {
     font-family: var(--font-sans);
     background-color: var(--color-background);
