@@ -18,6 +18,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Logo } from "./Logo";
+import { PwaInstall } from "./PwaInstall";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import { useTheme } from "@/lib/theme";
@@ -114,6 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-primary">
               {role === "admin" ? "Administrador" : role === "personal" ? "Personal Trainer" : "Aluno"}
             </div>
+            <PwaInstall />
             <button
               onClick={toggle}
               className="mb-2 flex w-full items-center gap-2 rounded-lg gold-border px-3 py-2 text-sm text-primary transition hover:bg-primary/10"
