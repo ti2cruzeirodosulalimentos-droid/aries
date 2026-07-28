@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { TablesInsert } from "@/integrations/supabase/types";
+import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { qk } from "@/lib/query-keys";
 
 /** Lista de avaliações físicas de um aluno (mais recente primeiro). */
@@ -76,6 +76,23 @@ export function useCreateAvaliacao(alunoId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.avaliacoes.all });
+      qc.invalidateQueries({ queryKey: qk.evolucao.byAluno(alunoId) });
+    },
+  });
+}
+
+/** Atualiza uma avaliação física existente (edição pós-criação). */
+export function useUpdateAvaliacao(alunoId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: string } & TablesUpdate<"avaliacoes_fisicas">) => {
+      const { error } = await supabase.from("avaliacoes_fisicas").update(payload).eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: qk.avaliacoes.all });
+      qc.invalidateQueries({ queryKey: qk.avaliacoes.detail(id) });
       qc.invalidateQueries({ queryKey: qk.evolucao.byAluno(alunoId) });
     },
   });

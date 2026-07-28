@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, FileDown, Loader2, Trash2, Calculator } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Trash2, Calculator, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
 import { ErrorState } from "@/components/ui/error-state";
@@ -77,6 +77,11 @@ function AvaliacaoDetail() {
           <ArrowLeft className="size-4" /> Histórico
         </Link>
         <div className="flex gap-2">
+          <Link to="/alunos/$id/avaliacoes/$avalId/editar" params={{ id: aluno_id, avalId }}>
+            <Button variant="outline">
+              <Pencil className="size-4" /> Editar
+            </Button>
+          </Link>
           <Button onClick={downloadPDF} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
             {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><FileDown className="size-4" /> Baixar PDF</>}
           </Button>
@@ -94,6 +99,17 @@ function AvaliacaoDetail() {
       {/* Resultados destacados */}
       <div className="luxury-card p-6 border-primary/40">
         <h3 className="font-display text-lg font-semibold text-primary mb-4 flex items-center gap-2"><Calculator className="size-5" /> Resultados</h3>
+        {a.percentual_gordura == null && a.protocolo !== "obesos" ? (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-4 flex items-start gap-2">
+            <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">
+              Composição corporal não calculada — faltam dobras cutâneas obrigatórias para o protocolo.
+              <Link to="/alunos/$id/avaliacoes/$avalId/editar" params={{ id: aluno_id, avalId }} className="text-primary underline ml-1">
+                Editar avaliação
+              </Link>{" "}para completar.
+            </p>
+          </div>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-3">
           <BigStat label="% Gordura" value={fmt(a.percentual_gordura, "%")} />
           <BigStat label="Massa Magra" value={fmt(a.massa_magra, " kg")} />

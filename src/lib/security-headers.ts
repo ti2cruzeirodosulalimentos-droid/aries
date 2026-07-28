@@ -13,7 +13,9 @@ const CONTENT_SECURITY_POLICY = [
   "form-action 'self'",
   "img-src 'self' data: blob: https://*.supabase.co",
   "font-src 'self' data:",
-  "script-src 'self' 'unsafe-inline'",
+  // 'wasm-unsafe-eval' é exigido pelo motor de layout WASM do @react-pdf/renderer
+  // (Yoga) ao gerar PDFs no navegador; é mais restrito que 'unsafe-eval' (não libera eval/Function).
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "worker-src 'self' blob:",
