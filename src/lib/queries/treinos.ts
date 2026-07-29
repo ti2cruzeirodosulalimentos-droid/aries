@@ -397,6 +397,45 @@ export function useTreinoExec(treinoId: string) {
   });
 }
 
+export interface TreinoCompleto {
+  letra: string;
+  nome: string;
+  objetivo: string | null;
+  observacoes: string | null;
+  itens: TreinoExercicioRow[];
+}
+
+/**
+ * Busca todas as fichas (A-E) de um aluno já com seus exercícios, prontas
+ * para montar o PDF completo. Não é um hook — chamada única sob demanda
+ * (botão "Baixar PDF"), mesmo padrão do downloadPDF em avaliações.
+ */
+export async function fetchTreinosCompletos(alunoId: string): Promise<TreinoCompleto[]> {
+  const { data: treinos, error: tErr } = await db
+    .from("treinos")
+    .select("id, letra, nome, objetivo, observacoes")
+    .eq("aluno_id", alunoId)
+    .order("letra");
+  if (tErr) throw tErr;
+  if (!treinos?.length) return [];
+
+  const ids = treinos.map((t: any) => t.id);
+  const { data: itens, error: iErr } = await db
+    .from("treino_exercicios")
+    .select("id, treino_id, ordem, series, repeticoes, carga, descanso_seg, metodo, observacoes, exercicio:exercicios(id, nome, grupo_muscular, equipamento)")
+    .in("treino_id", ids)
+    .order("ordem");
+  if (iErr) throw iErr;
+
+  return treinos.map((t: any) => ({
+    letra: t.letra,
+    nome: t.nome,
+    objetivo: t.objetivo,
+    observacoes: t.observacoes,
+    itens: (itens ?? []).filter((i: any) => i.treino_id === t.id) as TreinoExercicioRow[],
+  }));
+}
+
 /** Biblioteca completa de exercícios para o seletor (cacheada por prefixo "exercicios"). */
 export function useExerciciosPicker() {
   return useQuery({

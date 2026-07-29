@@ -1,20 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
-import { Plus, Dumbbell, Trash2, Sparkles, X, Check, PlayCircle, Camera, Loader2 } from "lucide-react";
+import { Plus, Dumbbell, Trash2, Sparkles, X, Check, PlayCircle, Camera, Loader2, FileDown } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { useAluno } from "@/lib/queries/alunos";
 import {
   useTreinosList,
   useCriarTreino,
   useExcluirTreino,
   useAplicarTemplate,
   useImportTreinosFromFoto,
+  fetchTreinosCompletos,
   type FotoTreino,
 } from "@/lib/queries/treinos";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { TEMPLATES, ajustarItem, type Template, type AjusteNivel } from "@/lib/treinos/templates";
 import { extractTreinoFromImage } from "@/lib/admin.functions";
 import { ErrorState } from "@/components/ui/error-state";
@@ -34,8 +36,47 @@ function TreinosList() {
   const fileRef = useRef<HTMLInputElement>(null);
   const extractFn = useServerFn(extractTreinoFromImage);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [genPdf, setGenPdf] = useState(false);
 
   const { data: treinos, isLoading, isError, refetch } = useTreinosList(id);
+  const { data: aluno } = useAluno(id);
+
+  async function downloadPDF() {
+    if (!aluno) return;
+    setGenPdf(true);
+    try {
+      const completos = await fetchTreinosCompletos(id);
+      if (!completos.length) { toast.error("Nenhuma ficha de treino pra exportar"); return; }
+      let fotoUrl: string | null = null;
+      if (aluno.photo_url) {
+        try {
+          const r = await fetch(aluno.photo_url);
+          const b = await r.blob();
+          fotoUrl = await new Promise<string>((res) => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result as string);
+            fr.readAsDataURL(b);
+          });
+        } catch { fotoUrl = null; }
+      }
+      const [{ pdf }, { TreinoPDF }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/lib/pdf/TreinoPDF"),
+      ]);
+      const blob = await pdf(<TreinoPDF aluno={aluno} treinos={completos} fotoUrl={fotoUrl} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `treino-${aluno.full_name.replace(/\s+/g, "_")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF gerado");
+    } catch (e: any) {
+      toast.error("Erro ao gerar PDF: " + e.message);
+    } finally {
+      setGenPdf(false);
+    }
+  }
 
   const criar = useCriarTreino(id, user?.id);
   const excluir = useExcluirTreino(id);
@@ -85,6 +126,11 @@ function TreinosList() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+          {(treinos?.length ?? 0) > 0 ? (
+            <Button onClick={downloadPDF} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
+              {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><FileDown className="size-4" /> Baixar PDF</>}
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={ocrLoading} className="gold-border">
             {ocrLoading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />} Importar de foto
           </Button>
