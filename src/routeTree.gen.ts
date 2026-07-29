@@ -36,7 +36,7 @@ import { Route as AuthenticatedAlunosIdTreinosIndexRouteImport } from './routes/
 import { Route as AuthenticatedAlunosIdAvaliacoesIndexRouteImport } from './routes/_authenticated/alunos.$id.avaliacoes.index'
 import { Route as AuthenticatedAlunosIdTreinosTreinoIdRouteImport } from './routes/_authenticated/alunos.$id.treinos.$treinoId'
 import { Route as AuthenticatedAlunosIdAvaliacoesNovaRouteImport } from './routes/_authenticated/alunos.$id.avaliacoes.nova'
-import { Route as AuthenticatedAlunosIdAvaliacoesAvalIdRouteImport } from './routes/_authenticated/alunos.$id.avaliacoes.$avalId'
+import { Route as AuthenticatedAlunosIdAvaliacoesAvalIdIndexRouteImport } from './routes/_authenticated/alunos.$id.avaliacoes.$avalId.index'
 import { Route as AuthenticatedAlunosIdTreinosTreinoIdExecutarRouteImport } from './routes/_authenticated/alunos.$id.treinos.$treinoId.executar'
 import { Route as AuthenticatedAlunosIdAvaliacoesAvalIdEditarRouteImport } from './routes/_authenticated/alunos.$id.avaliacoes.$avalId.editar'
 
@@ -190,10 +190,10 @@ const AuthenticatedAlunosIdAvaliacoesNovaRoute =
     path: '/avaliacoes/nova',
     getParentRoute: () => AuthenticatedAlunosIdRoute,
   } as any)
-const AuthenticatedAlunosIdAvaliacoesAvalIdRoute =
-  AuthenticatedAlunosIdAvaliacoesAvalIdRouteImport.update({
-    id: '/avaliacoes/$avalId',
-    path: '/avaliacoes/$avalId',
+const AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute =
+  AuthenticatedAlunosIdAvaliacoesAvalIdIndexRouteImport.update({
+    id: '/avaliacoes/$avalId/',
+    path: '/avaliacoes/$avalId/',
     getParentRoute: () => AuthenticatedAlunosIdRoute,
   } as any)
 const AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute =
@@ -204,9 +204,9 @@ const AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute =
   } as any)
 const AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute =
   AuthenticatedAlunosIdAvaliacoesAvalIdEditarRouteImport.update({
-    id: '/editar',
-    path: '/editar',
-    getParentRoute: () => AuthenticatedAlunosIdAvaliacoesAvalIdRoute,
+    id: '/avaliacoes/$avalId/editar',
+    path: '/avaliacoes/$avalId/editar',
+    getParentRoute: () => AuthenticatedAlunosIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -232,13 +232,13 @@ export interface FileRoutesByFullPath {
   '/alunos/$id/nutricao': typeof AuthenticatedAlunosIdNutricaoRoute
   '/api/public/hooks/lembrete-vencimento': typeof ApiPublicHooksLembreteVencimentoRoute
   '/alunos/$id/': typeof AuthenticatedAlunosIdIndexRoute
-  '/alunos/$id/avaliacoes/$avalId': typeof AuthenticatedAlunosIdAvaliacoesAvalIdRouteWithChildren
   '/alunos/$id/avaliacoes/nova': typeof AuthenticatedAlunosIdAvaliacoesNovaRoute
   '/alunos/$id/treinos/$treinoId': typeof AuthenticatedAlunosIdTreinosTreinoIdRouteWithChildren
   '/alunos/$id/avaliacoes/': typeof AuthenticatedAlunosIdAvaliacoesIndexRoute
   '/alunos/$id/treinos/': typeof AuthenticatedAlunosIdTreinosIndexRoute
   '/alunos/$id/avaliacoes/$avalId/editar': typeof AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute
   '/alunos/$id/treinos/$treinoId/executar': typeof AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute
+  '/alunos/$id/avaliacoes/$avalId/': typeof AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -262,13 +262,13 @@ export interface FileRoutesByTo {
   '/alunos/$id/nutricao': typeof AuthenticatedAlunosIdNutricaoRoute
   '/api/public/hooks/lembrete-vencimento': typeof ApiPublicHooksLembreteVencimentoRoute
   '/alunos/$id': typeof AuthenticatedAlunosIdIndexRoute
-  '/alunos/$id/avaliacoes/$avalId': typeof AuthenticatedAlunosIdAvaliacoesAvalIdRouteWithChildren
   '/alunos/$id/avaliacoes/nova': typeof AuthenticatedAlunosIdAvaliacoesNovaRoute
   '/alunos/$id/treinos/$treinoId': typeof AuthenticatedAlunosIdTreinosTreinoIdRouteWithChildren
   '/alunos/$id/avaliacoes': typeof AuthenticatedAlunosIdAvaliacoesIndexRoute
   '/alunos/$id/treinos': typeof AuthenticatedAlunosIdTreinosIndexRoute
   '/alunos/$id/avaliacoes/$avalId/editar': typeof AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute
   '/alunos/$id/treinos/$treinoId/executar': typeof AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute
+  '/alunos/$id/avaliacoes/$avalId': typeof AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -295,13 +295,13 @@ export interface FileRoutesById {
   '/_authenticated/alunos/$id/nutricao': typeof AuthenticatedAlunosIdNutricaoRoute
   '/api/public/hooks/lembrete-vencimento': typeof ApiPublicHooksLembreteVencimentoRoute
   '/_authenticated/alunos/$id/': typeof AuthenticatedAlunosIdIndexRoute
-  '/_authenticated/alunos/$id/avaliacoes/$avalId': typeof AuthenticatedAlunosIdAvaliacoesAvalIdRouteWithChildren
   '/_authenticated/alunos/$id/avaliacoes/nova': typeof AuthenticatedAlunosIdAvaliacoesNovaRoute
   '/_authenticated/alunos/$id/treinos/$treinoId': typeof AuthenticatedAlunosIdTreinosTreinoIdRouteWithChildren
   '/_authenticated/alunos/$id/avaliacoes/': typeof AuthenticatedAlunosIdAvaliacoesIndexRoute
   '/_authenticated/alunos/$id/treinos/': typeof AuthenticatedAlunosIdTreinosIndexRoute
   '/_authenticated/alunos/$id/avaliacoes/$avalId/editar': typeof AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute
   '/_authenticated/alunos/$id/treinos/$treinoId/executar': typeof AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute
+  '/_authenticated/alunos/$id/avaliacoes/$avalId/': typeof AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -328,13 +328,13 @@ export interface FileRouteTypes {
     | '/alunos/$id/nutricao'
     | '/api/public/hooks/lembrete-vencimento'
     | '/alunos/$id/'
-    | '/alunos/$id/avaliacoes/$avalId'
     | '/alunos/$id/avaliacoes/nova'
     | '/alunos/$id/treinos/$treinoId'
     | '/alunos/$id/avaliacoes/'
     | '/alunos/$id/treinos/'
     | '/alunos/$id/avaliacoes/$avalId/editar'
     | '/alunos/$id/treinos/$treinoId/executar'
+    | '/alunos/$id/avaliacoes/$avalId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -358,13 +358,13 @@ export interface FileRouteTypes {
     | '/alunos/$id/nutricao'
     | '/api/public/hooks/lembrete-vencimento'
     | '/alunos/$id'
-    | '/alunos/$id/avaliacoes/$avalId'
     | '/alunos/$id/avaliacoes/nova'
     | '/alunos/$id/treinos/$treinoId'
     | '/alunos/$id/avaliacoes'
     | '/alunos/$id/treinos'
     | '/alunos/$id/avaliacoes/$avalId/editar'
     | '/alunos/$id/treinos/$treinoId/executar'
+    | '/alunos/$id/avaliacoes/$avalId'
   id:
     | '__root__'
     | '/'
@@ -390,13 +390,13 @@ export interface FileRouteTypes {
     | '/_authenticated/alunos/$id/nutricao'
     | '/api/public/hooks/lembrete-vencimento'
     | '/_authenticated/alunos/$id/'
-    | '/_authenticated/alunos/$id/avaliacoes/$avalId'
     | '/_authenticated/alunos/$id/avaliacoes/nova'
     | '/_authenticated/alunos/$id/treinos/$treinoId'
     | '/_authenticated/alunos/$id/avaliacoes/'
     | '/_authenticated/alunos/$id/treinos/'
     | '/_authenticated/alunos/$id/avaliacoes/$avalId/editar'
     | '/_authenticated/alunos/$id/treinos/$treinoId/executar'
+    | '/_authenticated/alunos/$id/avaliacoes/$avalId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -597,11 +597,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAlunosIdAvaliacoesNovaRouteImport
       parentRoute: typeof AuthenticatedAlunosIdRoute
     }
-    '/_authenticated/alunos/$id/avaliacoes/$avalId': {
-      id: '/_authenticated/alunos/$id/avaliacoes/$avalId'
+    '/_authenticated/alunos/$id/avaliacoes/$avalId/': {
+      id: '/_authenticated/alunos/$id/avaliacoes/$avalId/'
       path: '/avaliacoes/$avalId'
-      fullPath: '/alunos/$id/avaliacoes/$avalId'
-      preLoaderRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdRouteImport
+      fullPath: '/alunos/$id/avaliacoes/$avalId/'
+      preLoaderRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdIndexRouteImport
       parentRoute: typeof AuthenticatedAlunosIdRoute
     }
     '/_authenticated/alunos/$id/treinos/$treinoId/executar': {
@@ -613,28 +613,13 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/alunos/$id/avaliacoes/$avalId/editar': {
       id: '/_authenticated/alunos/$id/avaliacoes/$avalId/editar'
-      path: '/editar'
+      path: '/avaliacoes/$avalId/editar'
       fullPath: '/alunos/$id/avaliacoes/$avalId/editar'
       preLoaderRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdEditarRouteImport
-      parentRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdRoute
+      parentRoute: typeof AuthenticatedAlunosIdRoute
     }
   }
 }
-
-interface AuthenticatedAlunosIdAvaliacoesAvalIdRouteChildren {
-  AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute
-}
-
-const AuthenticatedAlunosIdAvaliacoesAvalIdRouteChildren: AuthenticatedAlunosIdAvaliacoesAvalIdRouteChildren =
-  {
-    AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute:
-      AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute,
-  }
-
-const AuthenticatedAlunosIdAvaliacoesAvalIdRouteWithChildren =
-  AuthenticatedAlunosIdAvaliacoesAvalIdRoute._addFileChildren(
-    AuthenticatedAlunosIdAvaliacoesAvalIdRouteChildren,
-  )
 
 interface AuthenticatedAlunosIdTreinosTreinoIdRouteChildren {
   AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute: typeof AuthenticatedAlunosIdTreinosTreinoIdExecutarRoute
@@ -658,11 +643,12 @@ interface AuthenticatedAlunosIdRouteChildren {
   AuthenticatedAlunosIdMetasRoute: typeof AuthenticatedAlunosIdMetasRoute
   AuthenticatedAlunosIdNutricaoRoute: typeof AuthenticatedAlunosIdNutricaoRoute
   AuthenticatedAlunosIdIndexRoute: typeof AuthenticatedAlunosIdIndexRoute
-  AuthenticatedAlunosIdAvaliacoesAvalIdRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdRouteWithChildren
   AuthenticatedAlunosIdAvaliacoesNovaRoute: typeof AuthenticatedAlunosIdAvaliacoesNovaRoute
   AuthenticatedAlunosIdTreinosTreinoIdRoute: typeof AuthenticatedAlunosIdTreinosTreinoIdRouteWithChildren
   AuthenticatedAlunosIdAvaliacoesIndexRoute: typeof AuthenticatedAlunosIdAvaliacoesIndexRoute
   AuthenticatedAlunosIdTreinosIndexRoute: typeof AuthenticatedAlunosIdTreinosIndexRoute
+  AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute
+  AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute: typeof AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute
 }
 
 const AuthenticatedAlunosIdRouteChildren: AuthenticatedAlunosIdRouteChildren = {
@@ -672,8 +658,6 @@ const AuthenticatedAlunosIdRouteChildren: AuthenticatedAlunosIdRouteChildren = {
   AuthenticatedAlunosIdMetasRoute: AuthenticatedAlunosIdMetasRoute,
   AuthenticatedAlunosIdNutricaoRoute: AuthenticatedAlunosIdNutricaoRoute,
   AuthenticatedAlunosIdIndexRoute: AuthenticatedAlunosIdIndexRoute,
-  AuthenticatedAlunosIdAvaliacoesAvalIdRoute:
-    AuthenticatedAlunosIdAvaliacoesAvalIdRouteWithChildren,
   AuthenticatedAlunosIdAvaliacoesNovaRoute:
     AuthenticatedAlunosIdAvaliacoesNovaRoute,
   AuthenticatedAlunosIdTreinosTreinoIdRoute:
@@ -682,6 +666,10 @@ const AuthenticatedAlunosIdRouteChildren: AuthenticatedAlunosIdRouteChildren = {
     AuthenticatedAlunosIdAvaliacoesIndexRoute,
   AuthenticatedAlunosIdTreinosIndexRoute:
     AuthenticatedAlunosIdTreinosIndexRoute,
+  AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute:
+    AuthenticatedAlunosIdAvaliacoesAvalIdEditarRoute,
+  AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute:
+    AuthenticatedAlunosIdAvaliacoesAvalIdIndexRoute,
 }
 
 const AuthenticatedAlunosIdRouteWithChildren =

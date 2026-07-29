@@ -3,11 +3,12 @@ import { useState } from "react";
 import { ArrowLeft, FileDown, Loader2, Trash2, Calculator, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
+import { requiredDobras, DOBRAS } from "@/components/AvaliacaoForm";
 import { ErrorState } from "@/components/ui/error-state";
 import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/$avalId")({
+export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/$avalId/")({
   component: AvaliacaoDetail,
 });
 
@@ -146,12 +147,24 @@ function AvaliacaoDetail() {
       </Card>
 
       <Card title="Dobras Cutâneas (mm)">
+        {a.protocolo !== "obesos" ? (
+          <p className="text-xs text-muted-foreground mb-3">
+            Protocolo {protocoloLabel(a.protocolo)} usa só as dobras marcadas com *. As demais ficam registradas no histórico, mas não entram no cálculo.
+          </p>
+        ) : null}
         <Grid4>
-          {[
-            ["Peitoral", a.dobra_peitoral], ["Axilar Média", a.dobra_axilar_media], ["Tríceps", a.dobra_triceps],
-            ["Subescapular", a.dobra_subescapular], ["Abdominal", a.dobra_abdominal],
-            ["Suprailíaca", a.dobra_suprailiaca], ["Coxa", a.dobra_coxa],
-          ].map(([l, val]) => <FieldRO key={l as string} label={l as string} value={fmt(val)} />)}
+          {DOBRAS.map(([key, label]) => {
+            const required = requiredDobras(a.protocolo ?? undefined, a.genero ?? undefined).includes(key);
+            const val = a[key as keyof typeof a] as number | null;
+            return (
+              <FieldRO
+                key={key}
+                label={`${label}${required ? " *" : ""}`}
+                value={fmt(val)}
+                muted={!required && a.protocolo !== "obesos"}
+              />
+            );
+          })}
         </Grid4>
       </Card>
 
@@ -175,11 +188,11 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Grid4({ children }: { children: React.ReactNode }) {
   return <div className="grid gap-4 md:grid-cols-4">{children}</div>;
 }
-function FieldRO({ label, value }: { label: string; value: string }) {
+function FieldRO({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="font-semibold">{value}</p>
+      <p className={`font-semibold ${muted ? "text-muted-foreground" : ""}`}>{value}</p>
     </div>
   );
 }

@@ -43,7 +43,7 @@ const POSTURAL: Record<PosturalView, string[]> = {
 
 const VO2_PROTOCOLOS = ["Cooper 12 min","Teste de Polar","Astrand-Rhyming","Burpee 1 min","Outro"];
 
-const DOBRAS = [
+export const DOBRAS = [
   ["dobra_peitoral", "Peitoral"], ["dobra_axilar_media", "Axilar Média"], ["dobra_triceps", "Tríceps"],
   ["dobra_subescapular", "Subescapular"], ["dobra_abdominal", "Abdominal"], ["dobra_suprailiaca", "Suprailíaca"],
   ["dobra_coxa", "Coxa"],
@@ -67,7 +67,7 @@ const NUMERIC_KEYS = [
   "densidade_corporal", "percentual_gordura", "massa_gorda", "massa_magra", "peso_ideal_min", "peso_ideal_max", "imc", "rcq",
 ] as const;
 
-function requiredDobras(protocolo: string | undefined, genero: string | undefined): DobraKey[] {
+export function requiredDobras(protocolo: string | undefined, genero: string | undefined): DobraKey[] {
   if (protocolo === "jp7") return ["dobra_peitoral","dobra_axilar_media","dobra_triceps","dobra_subescapular","dobra_abdominal","dobra_suprailiaca","dobra_coxa"];
   if (protocolo === "jp3") {
     if (genero === "feminino") return ["dobra_triceps","dobra_suprailiaca","dobra_coxa"];
