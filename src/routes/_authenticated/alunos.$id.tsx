@@ -150,7 +150,7 @@ function EnviarMensagemModal({ aluno, onClose }: { aluno: AlunoMsg; onClose: () 
   const email = aluno.email || "";
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-lg p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-display text-xl">Enviar mensagem</h3>
         <div>

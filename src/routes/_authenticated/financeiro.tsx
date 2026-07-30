@@ -220,7 +220,7 @@ function MetaButton({ meta, mes, ano, userId }: { meta: number; mes: number; ano
     <>
       <Button variant="outline" onClick={() => setOpen(true)} className="gap-2"><Target className="size-4" /> Meta do mês</Button>
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8" onClick={() => setOpen(false)}>
           <div className="luxury-card w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg">Meta de {String(mes).padStart(2,"0")}/{ano}</h3>
             <Label>Valor (R$)</Label>
@@ -271,7 +271,7 @@ function NovaVendaModal({ onClose, userId }: { onClose: () => void; userId: stri
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-display text-xl">Nova venda</h3>
         <div className="space-y-3">
@@ -332,7 +332,7 @@ function ProdutosModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl">Produtos & Planos</h3>

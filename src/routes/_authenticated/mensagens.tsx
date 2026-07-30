@@ -114,7 +114,7 @@ function MensagensPage() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setEditing(null)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-4 py-8" onClick={() => setEditing(null)}>
           <div className="luxury-card w-full max-w-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl">{editing.id ? "Editar template" : "Novo template"}</h2>

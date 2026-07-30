@@ -166,7 +166,7 @@ function Chip({ active, children, onClick }: { active: boolean; children: React.
 
 function DetalheModal({ exercicio, onClose }: { exercicio: any; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 backdrop-blur-sm px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="aspect-video bg-secondary/40 relative">
           {exercicio.gif_url || exercicio.imagem_url ? (
@@ -238,7 +238,7 @@ function NovoExercicioModal({ onClose, onSaved }: { onClose: () => void; onSaved
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-4 py-8" onClick={onClose}>
       <form onSubmit={submit} className="luxury-card w-full max-w-lg space-y-4 p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold">Novo Exercício</h3>

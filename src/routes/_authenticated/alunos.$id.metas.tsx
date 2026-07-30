@@ -163,7 +163,7 @@ function NovaMetaModal({ alunoId, onClose, onSaved }: { alunoId: string; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-4 py-8" onClick={onClose}>
       <form onSubmit={submit} className="luxury-card w-full max-w-lg space-y-4 p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold">Nova Meta</h3>

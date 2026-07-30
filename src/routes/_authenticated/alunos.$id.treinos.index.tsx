@@ -226,7 +226,7 @@ function TemplatesModal({ onClose, onApply, loading }: { onClose: () => void; on
   const [nivel, setNivel] = useState<AjusteNivel>("intermediario");
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 backdrop-blur-sm px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>

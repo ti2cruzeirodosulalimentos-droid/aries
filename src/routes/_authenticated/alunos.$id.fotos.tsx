@@ -153,7 +153,7 @@ function UploadModal({ alunoId, onClose, onDone }: { alunoId: string; onClose: (
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 backdrop-blur-sm px-4 py-8" onClick={onClose}>
       <form onSubmit={submit} className="luxury-card w-full max-w-xl space-y-4 p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold">Nova Sessão de Fotos</h3>
@@ -224,7 +224,7 @@ function CompareModal({ sessoes, onClose }: { sessoes: [string, any[]][]; onClos
   const fotoB = sessoes.find(([d]) => d === b)?.[1].find((f) => f.angulo === angulo);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 backdrop-blur-sm px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-4xl space-y-4 p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-xl font-semibold">Comparativo de Evolução</h3>

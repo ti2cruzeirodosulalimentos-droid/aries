@@ -235,7 +235,7 @@ function EventoModal({ evento, userId, onClose }: { evento: Partial<Evento>; use
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8" onClick={onClose}>
       <div className="luxury-card w-full max-w-md p-5 space-y-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-display text-xl flex items-center gap-2"><CalIcon className="size-5 text-primary" /> {evento.id ? "Editar" : "Novo"} evento</h3>
         <div><Label>Título</Label><Input value={titulo} onChange={(e) => setTitulo(e.target.value)} /></div>
