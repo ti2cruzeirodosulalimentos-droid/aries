@@ -96,7 +96,7 @@ export const avaliacaoSchema = z
     peso: reqNum(20, 350, "Peso (kg)"),
     altura: reqNum(1.0, 2.5, "Altura (m)"),
     idade: optNum(5, 120),
-    genero: opt(z.enum(["masculino", "feminino"])),
+    genero: z.enum(["masculino", "feminino"], { message: "Gênero é obrigatório — o cálculo de composição corporal usa dobras e fórmulas diferentes para cada sexo" }),
     protocolo: opt(z.enum(["jp3", "jp7", "obesos"])),
     observacoes: opt(z.string().trim().max(2000)),
   })

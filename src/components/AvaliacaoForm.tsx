@@ -70,8 +70,11 @@ const NUMERIC_KEYS = [
 export function requiredDobras(protocolo: string | undefined, genero: string | undefined): DobraKey[] {
   if (protocolo === "jp7") return ["dobra_peitoral","dobra_axilar_media","dobra_triceps","dobra_subescapular","dobra_abdominal","dobra_suprailiaca","dobra_coxa"];
   if (protocolo === "jp3") {
+    // Sem gênero definido não dá pra saber quais 3 dobras pedir (o protocolo usa
+    // pontos diferentes por sexo) — nunca presumir "masculino" por padrão.
     if (genero === "feminino") return ["dobra_triceps","dobra_suprailiaca","dobra_coxa"];
-    return ["dobra_peitoral","dobra_abdominal","dobra_coxa"];
+    if (genero === "masculino") return ["dobra_peitoral","dobra_abdominal","dobra_coxa"];
+    return [];
   }
   return [];
 }
@@ -160,6 +163,7 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
   }, [v]);
   const missingDobrasLabels = missingDobras.map((k) => DOBRAS.find(([key]) => key === k)?.[1] ?? k);
   const dobrasIniciadas = DOBRAS.some(([k]) => v[k] != null);
+  const generoIndefinido = v.protocolo === "jp3" && !v.genero;
 
   function salvar() {
     if (!user) { toast.error("Sessão expirada"); return; }
@@ -310,6 +314,13 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
               <Mini label="IMC" value={fmt(calc?.imc)} />
             </div>
           </div>
+        ) : generoIndefinido ? (
+          <div className="luxury-card p-4 border-destructive/40 bg-destructive/5">
+            <p className="text-xs uppercase tracking-wider text-destructive mb-1 flex items-center gap-2">
+              <AlertTriangle className="size-4" /> Composição corporal não calculada
+            </p>
+            <p className="text-sm text-muted-foreground">Defina o gênero na aba Configuração — obrigatório para o protocolo JP3.</p>
+          </div>
         ) : dobrasIniciadas && missingDobras.length > 0 ? (
           <div className="luxury-card p-4 border-destructive/40 bg-destructive/5">
             <p className="text-xs uppercase tracking-wider text-destructive mb-1 flex items-center gap-2">
@@ -343,7 +354,7 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
         <Section title="Configuração">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Data"><Input type="date" value={v.data_avaliacao ?? ""} onChange={(e) => set("data_avaliacao", e.target.value)} /></Field>
-            <Field label="Gênero">
+            <Field label="Gênero *">
               <Select value={v.genero ?? ""} onValueChange={(val) => set("genero", val)}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
@@ -400,22 +411,26 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
           <Section title="Dobras Cutâneas (mm)">
             {v.protocolo === "obesos" ? (
               <p className="text-sm text-muted-foreground">Este protocolo não utiliza dobras — usa circunferência abdominal.</p>
+            ) : v.protocolo === "jp3" && !v.genero ? (
+              <div className="flex items-start gap-2 text-sm text-destructive">
+                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                <p>Selecione o gênero na aba <strong>Configuração</strong> antes de preencher as dobras — o protocolo JP3 mede pontos diferentes para homens e mulheres.</p>
+              </div>
             ) : (() => {
               const required = requiredDobras(v.protocolo, v.genero);
+              // JP3 só mostra as 3 dobras do sexo selecionado, pra não confundir o
+              // personal com pontos que essa fórmula nem usa. JP7 usa todas as 7.
+              const visiveis = v.protocolo === "jp3" ? DOBRAS.filter(([k]) => required.includes(k)) : DOBRAS;
               return (
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                  {DOBRAS.map(([k, label]) => {
-                    const isReq = required.includes(k);
-                    return (
-                      <Field key={k} label={`${label}${isReq ? " *" : ""}`}>
-                        <NumInput value={v[k]} onChange={num(k)} step="0.1" />
-                      </Field>
-                    );
-                  })}
+                  {visiveis.map(([k, label]) => (
+                    <Field key={k} label={label}>
+                      <NumInput value={v[k]} onChange={num(k)} step="0.1" />
+                    </Field>
+                  ))}
                 </div>
               );
             })()}
-            <p className="text-xs text-muted-foreground mt-2">* obrigatórias para o protocolo selecionado. As demais ficam registradas no histórico.</p>
           </Section>
 
           {calc?.percentual_gordura ? (
