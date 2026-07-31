@@ -1,12 +1,14 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Camera, Loader2, Save, Trash2 } from "lucide-react";
+import { Camera, Loader2, Save, Trash2, Link2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import { useDeleteAluno, useUpsertAluno } from "@/lib/queries/alunos";
+import { linkAlunoAccount } from "@/lib/admin.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +33,7 @@ export interface AlunoFormValues {
   plan_expires_at?: string | null;
   personal_id?: string | null;
   nutricionista_id?: string | null;
+  user_id?: string | null;
 }
 
 const empty: AlunoFormValues = {
@@ -47,6 +50,16 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const linkAccountFn = useServerFn(linkAlunoAccount);
+  const linkAccount = useMutation({
+    mutationFn: async (alunoId: string) => linkAccountFn({ data: { alunoId } }),
+    onSuccess: (res) => {
+      toast.success(`Conta vinculada! ${res.email} já vê todo o histórico.`);
+      qc.invalidateQueries({ queryKey: ["alunos"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao vincular"),
+  });
 
   const { data: personals = [] } = useQuery({
     queryKey: ["personals-list"],
@@ -293,6 +306,34 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
           </Field>
         </div>
       </div>
+
+      {mode === "edit" && values.id ? (
+        <div className="luxury-card rounded-2xl p-6">
+          <h2 className="font-display text-lg font-semibold flex items-center gap-2"><Link2 className="size-5 text-primary" /> Conta de acesso do aluno</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Esse cadastro guarda todo o histórico (anamnese, avaliações, treinos, fotos). Quando o aluno criar a própria conta no app (mesmo e-mail cadastrado aqui), vincule aqui pra ele passar a ver tudo — nada precisa ser recriado.
+          </p>
+          {values.user_id ? (
+            <div className="mt-4 flex items-center gap-2 text-sm text-emerald-500">
+              <CheckCircle2 className="size-4" /> Conta vinculada — o aluno já acessa o histórico dele.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs text-muted-foreground">E-mail cadastrado: <strong className="text-foreground">{values.email || "nenhum — cadastre um e-mail primeiro"}</strong></p>
+              <Button
+                type="button"
+                variant="outline"
+                className="gold-border"
+                disabled={!values.email || linkAccount.isPending}
+                onClick={() => linkAccount.mutate(values.id!)}
+              >
+                {linkAccount.isPending ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+                Vincular conta já criada
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl bg-background/80 p-3 backdrop-blur gold-border">
         <Button

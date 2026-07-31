@@ -51,6 +51,47 @@ export const adminEnableAccount = createServerFn({ method: "POST" })
   });
 
 /**
+ * Vincula o cadastro de um aluno (feito pelo personal/nutricionista antes de
+ * ele ter conta) à conta de login que o próprio aluno criou depois — casando
+ * pelo e-mail. Não move nenhum dado: só define alunos.user_id, e o histórico
+ * inteiro (anamnese, avaliações, treinos, fotos) já fica visível pra ele,
+ * porque tudo é ligado ao aluno_id, que não muda.
+ */
+export const linkAlunoAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ alunoId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    // RLS do próprio contexto do chamador já garante que só quem é
+    // personal_id/nutricionista_id/admin desse aluno consegue lê-lo aqui.
+    const { data: aluno, error: alunoErr } = await context.supabase
+      .from("alunos")
+      .select("id, email, user_id, full_name")
+      .eq("id", data.alunoId)
+      .single();
+    if (alunoErr || !aluno) throw new Error("Aluno não encontrado ou sem permissão");
+    if (!aluno.email) throw new Error("Este aluno não tem e-mail cadastrado — adicione o e-mail primeiro (deve ser o mesmo que ele vai usar pra criar a conta).");
+    if (aluno.user_id) throw new Error("Este aluno já tem uma conta vinculada.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const alvo = aluno.email.trim().toLowerCase();
+    let matched: { id: string } | null = null;
+    for (let page = 1; page <= 20 && !matched; page++) {
+      const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) throw error;
+      matched = list.users.find((u) => u.email?.toLowerCase() === alvo) ?? null;
+      if (list.users.length < 200) break;
+    }
+    if (!matched) {
+      throw new Error(`Nenhuma conta encontrada com o e-mail ${aluno.email}. O aluno precisa criar a conta (mesmo e-mail do cadastro) antes de vincular.`);
+    }
+
+    const { error: updErr } = await supabaseAdmin.from("alunos").update({ user_id: matched.id }).eq("id", data.alunoId);
+    if (updErr) throw updErr;
+    return { ok: true, email: aluno.email };
+  });
+
+/**
  * OCR: extrai treinos ABCDE de uma foto de ficha usando IA visão (Gemini).
  * Retorna estrutura JSON pronta para inserir como treinos + treino_exercicios.
  */
