@@ -22,6 +22,7 @@ export const qk = {
     detail: (id: string) => ["avaliacoes", "detail", id] as const,
     // Dados do aluno usados ao montar uma nova avaliação (nome, gênero, nascimento).
     alunoCtx: (alunoId: string) => ["avaliacoes", "aluno-ctx", alunoId] as const,
+    ultima: (alunoId: string) => ["avaliacoes", "ultima", alunoId] as const,
   },
   treinos: {
     all: ["treinos"] as const,

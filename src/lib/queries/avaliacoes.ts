@@ -37,6 +37,25 @@ export function useAlunoParaAvaliacao(alunoId: string) {
   });
 }
 
+/** Última avaliação registrada do aluno — usada como "gabarito" (valores de referência) ao criar uma nova. */
+export function useUltimaAvaliacao(alunoId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.avaliacoes.ultima(alunoId),
+    enabled: enabled && !!alunoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("avaliacoes_fisicas")
+        .select("*")
+        .eq("aluno_id", alunoId)
+        .order("data_avaliacao", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 /** Avaliação + aluno + anamnese mais recente, usados no detalhe e no PDF. */
 export function useAvaliacaoDetail(alunoId: string, avalId: string) {
   return useQuery({

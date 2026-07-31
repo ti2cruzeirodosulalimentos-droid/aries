@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, HeartPulse, Dumbbell, Camera, PersonStanding, Settings2, Check, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useAlunoParaAvaliacao, useAvaliacaoDetail, useCreateAvaliacao, useUpdateAvaliacao } from "@/lib/queries/avaliacoes";
+import { useAlunoParaAvaliacao, useAvaliacaoDetail, useCreateAvaliacao, useUpdateAvaliacao, useUltimaAvaliacao } from "@/lib/queries/avaliacoes";
 import { useAuth } from "@/lib/auth";
 import { avaliacaoSchema, validate } from "@/lib/validation/schemas";
 import { Input } from "@/components/ui/input";
@@ -110,6 +110,8 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
 
   const { data: aluno } = useAlunoParaAvaliacao(aluno_id);
   const { data: existing } = useAvaliacaoDetail(aluno_id, avalId ?? "");
+  // Gabarito: última avaliação já registrada, só faz sentido ao criar uma nova (não ao editar).
+  const { data: ultima } = useUltimaAvaliacao(aluno_id, !isEdit);
   const create = useCreateAvaliacao(aluno_id);
   const update = useUpdateAvaliacao(aluno_id);
   const saving = isEdit ? update.isPending : create.isPending;
@@ -164,6 +166,13 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
   const missingDobrasLabels = missingDobras.map((k) => DOBRAS.find(([key]) => key === k)?.[1] ?? k);
   const dobrasIniciadas = DOBRAS.some(([k]) => v[k] != null);
   const generoIndefinido = v.protocolo === "jp3" && !v.genero;
+
+  // Valor da última avaliação pra um campo — mostrado como referência ao lado do input.
+  function prev(key: string): string | undefined {
+    const v = (ultima as Record<string, any> | undefined)?.[key];
+    if (v == null) return undefined;
+    return typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toFixed(1)) : String(v);
+  }
 
   function salvar() {
     if (!user) { toast.error("Sessão expirada"); return; }
@@ -382,8 +391,8 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
         <>
           <Section title="Antropometria & Sinais Vitais">
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-              <Field label="Peso (kg) *"><NumInput value={v.peso} onChange={num("peso")} step="0.1" /></Field>
-              <Field label="Altura (m ou cm) *">
+              <Field label="Peso (kg) *" hint={prev("peso")}><NumInput value={v.peso} onChange={num("peso")} step="0.1" /></Field>
+              <Field label="Altura (m ou cm) *" hint={prev("altura")}>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -399,9 +408,9 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
                   }}
                 />
               </Field>
-              <Field label="PA Sistólica"><NumInput value={v.pressao_sistolica} onChange={num("pressao_sistolica")} /></Field>
-              <Field label="PA Diastólica"><NumInput value={v.pressao_diastolica} onChange={num("pressao_diastolica")} /></Field>
-              <Field label="FC Repouso (bpm)"><NumInput value={v.fc_repouso} onChange={num("fc_repouso")} /></Field>
+              <Field label="PA Sistólica" hint={prev("pressao_sistolica")}><NumInput value={v.pressao_sistolica} onChange={num("pressao_sistolica")} /></Field>
+              <Field label="PA Diastólica" hint={prev("pressao_diastolica")}><NumInput value={v.pressao_diastolica} onChange={num("pressao_diastolica")} /></Field>
+              <Field label="FC Repouso (bpm)" hint={prev("fc_repouso")}><NumInput value={v.fc_repouso} onChange={num("fc_repouso")} /></Field>
             </div>
             {v.altura != null && (v.altura < 1 || v.altura > 2.4) ? (
               <p className="text-xs text-destructive mt-2">Altura fora da faixa esperada (1.00–2.40 m). Confira o valor.</p>
@@ -424,7 +433,7 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
               return (
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                   {visiveis.map(([k, label]) => (
-                    <Field key={k} label={label}>
+                    <Field key={k} label={label} hint={prev(k)}>
                       <NumInput value={v[k]} onChange={num(k)} step="0.1" />
                     </Field>
                   ))}
@@ -462,7 +471,7 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
           <Section title="Centrais (cm)">
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               {CIRC.map(([k, label]) => (
-                <Field key={k} label={label}><NumInput value={v[k]} onChange={num(k)} step="0.1" /></Field>
+                <Field key={k} label={label} hint={prev(k)}><NumInput value={v[k]} onChange={num(k)} step="0.1" /></Field>
               ))}
             </div>
           </Section>
@@ -471,19 +480,26 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
               <span></span><span className="text-center">Direito</span><span className="text-center">Esquerdo</span>
             </div>
             <div className="space-y-2">
-              {CIRC_BILAT.map(([k, label]) => (
-                <div key={k} className="grid grid-cols-[1fr_70px_70px] gap-2 items-center">
-                  <Label className="text-sm leading-tight">{label}</Label>
-                  <NumInput value={v[`circ_${k}_d`]} onChange={num(`circ_${k}_d`)} step="0.1" />
-                  <NumInput value={v[`circ_${k}_e`]} onChange={num(`circ_${k}_e`)} step="0.1" />
-                </div>
-              ))}
+              {CIRC_BILAT.map(([k, label]) => {
+                const hD = prev(`circ_${k}_d`);
+                const hE = prev(`circ_${k}_e`);
+                return (
+                  <div key={k} className="grid grid-cols-[1fr_70px_70px] gap-2 items-center">
+                    <Label className="text-sm leading-tight">
+                      {label}
+                      {hD || hE ? <span className="block text-[10px] normal-case text-primary/70">anterior: D {hD ?? "—"} / E {hE ?? "—"}</span> : null}
+                    </Label>
+                    <NumInput value={v[`circ_${k}_d`]} onChange={num(`circ_${k}_d`)} step="0.1" />
+                    <NumInput value={v[`circ_${k}_e`]} onChange={num(`circ_${k}_e`)} step="0.1" />
+                  </div>
+                );
+              })}
             </div>
           </Section>
           <Section title="Diâmetro Ósseo (cm)">
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
               {DIAMETROS.map(([k, label]) => (
-                <Field key={k} label={label}><NumInput value={v[k]} onChange={num(k)} step="0.1" /></Field>
+                <Field key={k} label={label} hint={prev(k)}><NumInput value={v[k]} onChange={num(k)} step="0.1" /></Field>
               ))}
             </div>
           </Section>
@@ -595,8 +611,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><Label className="mb-1.5 block text-xs uppercase tracking-wider text-muted-foreground">{label}</Label>{children}</div>;
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  return (
+    <div>
+      <Label className="mb-1.5 flex items-baseline gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+        {label}
+        {hint ? <span className="normal-case tracking-normal text-primary/70">(anterior: {hint})</span> : null}
+      </Label>
+      {children}
+    </div>
+  );
 }
 function NumInput({ value, onChange, step, disabled }: { value: any; onChange: (v: string) => void; step?: string; disabled?: boolean }) {
   return <Input type="number" inputMode="decimal" step={step ?? "1"} value={value ?? ""} onChange={(e) => onChange(e.target.value)} disabled={disabled} />;
