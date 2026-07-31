@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import type { TreinoCompleto, TreinoExercicioRow } from "@/lib/queries/treinos";
+import type { PersonalBranding } from "@/lib/pdf/AvaliacaoPDF";
 
 interface AlunoInfo {
   full_name: string;
@@ -23,6 +24,8 @@ const s = StyleSheet.create({
   cover: { flex: 1, justifyContent: "space-between" },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   brandText: { color: colors.gold, fontSize: 14, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
+  brandLogo: { height: 40, maxWidth: 200, objectFit: "contain" },
+  brandLogoDefault: { width: 44, height: 44, borderRadius: 22, objectFit: "cover" },
   coverMiddle: { alignItems: "center" },
   coverTitle: { fontSize: 36, color: colors.gold, fontFamily: "Helvetica-Bold", textAlign: "center" },
   coverSubtitle: { fontSize: 12, color: colors.muted, marginTop: 8, letterSpacing: 6, textAlign: "center" },
@@ -91,9 +94,10 @@ export interface TreinoPDFProps {
   aluno: AlunoInfo;
   treinos: TreinoCompleto[];
   fotoUrl?: string | null;
+  personal?: PersonalBranding | null;
 }
 
-export function TreinoPDF({ aluno, treinos, fotoUrl }: TreinoPDFProps) {
+export function TreinoPDF({ aluno, treinos, fotoUrl, personal }: TreinoPDFProps) {
   const totalPages = 1 + treinos.length;
 
   return (
@@ -102,7 +106,11 @@ export function TreinoPDF({ aluno, treinos, fotoUrl }: TreinoPDFProps) {
       <Page size="A4" style={s.page}>
         <View style={s.cover}>
           <View style={s.brandRow}>
-            <Text style={s.brandText}>PERSONAL ARIANNY PRO</Text>
+            {personal?.logoUrl ? (
+              <Image src={personal.logoUrl} style={s.brandLogo} />
+            ) : (
+              <Image src="/logo-aries.jpg" style={s.brandLogoDefault} />
+            )}
           </View>
           <View style={s.coverMiddle}>
             <Text style={s.coverSubtitle}>PROGRAMA DE TREINO</Text>

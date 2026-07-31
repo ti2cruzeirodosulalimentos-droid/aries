@@ -21,6 +21,8 @@ const s = StyleSheet.create({
   cover: { flex: 1, justifyContent: "space-between" },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   brandText: { color: colors.gold, fontSize: 14, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
+  brandLogo: { height: 40, maxWidth: 200, objectFit: "contain" },
+  brandLogoDefault: { width: 44, height: 44, borderRadius: 22, objectFit: "cover" },
   coverMiddle: { alignItems: "center" },
   coverTitle: { fontSize: 36, color: colors.gold, fontFamily: "Helvetica-Bold", textAlign: "center" },
   coverSubtitle: { fontSize: 12, color: colors.muted, marginTop: 8, letterSpacing: 6, textAlign: "center" },
@@ -95,14 +97,20 @@ function Field({ label, value, width }: { label: string; value: string; width?: 
   );
 }
 
+export interface PersonalBranding {
+  logoUrl?: string | null;
+  brandName?: string | null;
+}
+
 export interface AvaliacaoPDFProps {
   aluno: Aluno;
   avaliacao: Avaliacao;
   anamnese?: Anamnese | null;
   fotoUrl?: string | null;
+  personal?: PersonalBranding | null;
 }
 
-export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl }: AvaliacaoPDFProps) {
+export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal }: AvaliacaoPDFProps) {
   const total = anamnese ? 4 : 3;
   return (
     <Document title={`Avaliação Física — ${aluno.full_name}`} author="ARIÉS">
@@ -110,7 +118,11 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl }: Avaliac
       <Page size="A4" style={s.page}>
         <View style={s.cover}>
           <View style={s.brandRow}>
-            <Text style={s.brandText}>PERSONAL ARIANNY PRO</Text>
+            {personal?.logoUrl ? (
+              <Image src={personal.logoUrl} style={s.brandLogo} />
+            ) : (
+              <Image src="/logo-aries.jpg" style={s.brandLogoDefault} />
+            )}
           </View>
           <View style={s.coverMiddle}>
             <Text style={s.coverSubtitle}>AVALIAÇÃO FÍSICA</Text>

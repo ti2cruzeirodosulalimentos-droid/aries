@@ -14,6 +14,7 @@ import {
   fetchTreinosCompletos,
   type FotoTreino,
 } from "@/lib/queries/treinos";
+import { urlToDataUrl, fetchPersonalBranding } from "@/lib/pdf/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -47,23 +48,15 @@ function TreinosList() {
     try {
       const completos = await fetchTreinosCompletos(id);
       if (!completos.length) { toast.error("Nenhuma ficha de treino pra exportar"); return; }
-      let fotoUrl: string | null = null;
-      if (aluno.photo_url) {
-        try {
-          const r = await fetch(aluno.photo_url);
-          const b = await r.blob();
-          fotoUrl = await new Promise<string>((res) => {
-            const fr = new FileReader();
-            fr.onload = () => res(fr.result as string);
-            fr.readAsDataURL(b);
-          });
-        } catch { fotoUrl = null; }
-      }
+      const [fotoUrl, personal] = await Promise.all([
+        urlToDataUrl(aluno.photo_url),
+        fetchPersonalBranding(aluno.personal_id),
+      ]);
       const [{ pdf }, { TreinoPDF }] = await Promise.all([
         import("@react-pdf/renderer"),
         import("@/lib/pdf/TreinoPDF"),
       ]);
-      const blob = await pdf(<TreinoPDF aluno={aluno} treinos={completos} fotoUrl={fotoUrl} />).toBlob();
+      const blob = await pdf(<TreinoPDF aluno={aluno} treinos={completos} fotoUrl={fotoUrl} personal={personal} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

@@ -16,6 +16,7 @@ import {
   Moon,
   MessageCircle,
   Settings,
+  ImageUp,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { PwaInstall } from "./PwaInstall";
@@ -33,6 +34,7 @@ const NAV_ADMIN_PERSONAL: NavItem[] = [
   { to: "/agenda", label: "Agenda", icon: Calendar },
   { to: "/mensagens", label: "Mensagens", icon: MessageCircle },
   { to: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { to: "/minha-marca", label: "Minha Marca", icon: ImageUp },
 ];
 
 const NAV_ALUNO: NavItem[] = [

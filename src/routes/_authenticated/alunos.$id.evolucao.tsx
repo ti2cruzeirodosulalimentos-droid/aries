@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatsSkeleton } from "@/components/ui/list-skeleton";
 import { toast } from "sonner";
 import { BodyMuscleMap } from "@/components/BodyMuscleMap";
+import { fetchPersonalBranding } from "@/lib/pdf/utils";
 
 const EvolucaoChart = lazy(() => import("@/components/EvolucaoChart"));
 
@@ -77,9 +78,9 @@ function EvolucaoPage() {
       }));
       const periodo = { de: formatDate(data[0].data_avaliacao), ate: formatDate(data[data.length - 1].data_avaliacao) };
 
-      const [{ pdf }, { EvolucaoPDF }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/lib/pdf/EvolucaoPDF"),
+      const [personal, [{ pdf }, { EvolucaoPDF }]] = await Promise.all([
+        fetchPersonalBranding((aluno as any)?.personal_id),
+        Promise.all([import("@react-pdf/renderer"), import("@/lib/pdf/EvolucaoPDF")]),
       ]);
       const blob = await pdf(
         <EvolucaoPDF
@@ -88,6 +89,7 @@ function EvolucaoPage() {
           periodo={periodo}
           registros={registros}
           chartImage={chartImage}
+          personal={personal}
         />,
       ).toBlob();
       const url = URL.createObjectURL(blob);

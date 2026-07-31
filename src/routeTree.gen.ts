@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPermissoesRouteImport } from './routes/_authenticated/permissoes'
+import { Route as AuthenticatedMinhaMarcaRouteImport } from './routes/_authenticated/minha-marca'
 import { Route as AuthenticatedMinhaAgendaRouteImport } from './routes/_authenticated/minha-agenda'
 import { Route as AuthenticatedMeusTreinosRouteImport } from './routes/_authenticated/meus-treinos'
 import { Route as AuthenticatedMeusPagamentosRouteImport } from './routes/_authenticated/meus-pagamentos'
@@ -57,6 +58,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedPermissoesRoute = AuthenticatedPermissoesRouteImport.update({
   id: '/permissoes',
   path: '/permissoes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMinhaMarcaRoute = AuthenticatedMinhaMarcaRouteImport.update({
+  id: '/minha-marca',
+  path: '/minha-marca',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMinhaAgendaRoute =
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/meus-pagamentos': typeof AuthenticatedMeusPagamentosRoute
   '/meus-treinos': typeof AuthenticatedMeusTreinosRoute
   '/minha-agenda': typeof AuthenticatedMinhaAgendaRoute
+  '/minha-marca': typeof AuthenticatedMinhaMarcaRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
   '/admin/customizacao': typeof AuthenticatedAdminCustomizacaoRoute
   '/alunos/$id': typeof AuthenticatedAlunosIdRouteWithChildren
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/meus-pagamentos': typeof AuthenticatedMeusPagamentosRoute
   '/meus-treinos': typeof AuthenticatedMeusTreinosRoute
   '/minha-agenda': typeof AuthenticatedMinhaAgendaRoute
+  '/minha-marca': typeof AuthenticatedMinhaMarcaRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
   '/admin/customizacao': typeof AuthenticatedAdminCustomizacaoRoute
   '/alunos/novo': typeof AuthenticatedAlunosNovoRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/_authenticated/meus-pagamentos': typeof AuthenticatedMeusPagamentosRoute
   '/_authenticated/meus-treinos': typeof AuthenticatedMeusTreinosRoute
   '/_authenticated/minha-agenda': typeof AuthenticatedMinhaAgendaRoute
+  '/_authenticated/minha-marca': typeof AuthenticatedMinhaMarcaRoute
   '/_authenticated/permissoes': typeof AuthenticatedPermissoesRoute
   '/_authenticated/admin/customizacao': typeof AuthenticatedAdminCustomizacaoRoute
   '/_authenticated/alunos/$id': typeof AuthenticatedAlunosIdRouteWithChildren
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/meus-pagamentos'
     | '/meus-treinos'
     | '/minha-agenda'
+    | '/minha-marca'
     | '/permissoes'
     | '/admin/customizacao'
     | '/alunos/$id'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/meus-pagamentos'
     | '/meus-treinos'
     | '/minha-agenda'
+    | '/minha-marca'
     | '/permissoes'
     | '/admin/customizacao'
     | '/alunos/novo'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/_authenticated/meus-pagamentos'
     | '/_authenticated/meus-treinos'
     | '/_authenticated/minha-agenda'
+    | '/_authenticated/minha-marca'
     | '/_authenticated/permissoes'
     | '/_authenticated/admin/customizacao'
     | '/_authenticated/alunos/$id'
@@ -434,6 +446,13 @@ declare module '@tanstack/react-router' {
       path: '/permissoes'
       fullPath: '/permissoes'
       preLoaderRoute: typeof AuthenticatedPermissoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/minha-marca': {
+      id: '/_authenticated/minha-marca'
+      path: '/minha-marca'
+      fullPath: '/minha-marca'
+      preLoaderRoute: typeof AuthenticatedMinhaMarcaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/minha-agenda': {
@@ -686,6 +705,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMeusPagamentosRoute: typeof AuthenticatedMeusPagamentosRoute
   AuthenticatedMeusTreinosRoute: typeof AuthenticatedMeusTreinosRoute
   AuthenticatedMinhaAgendaRoute: typeof AuthenticatedMinhaAgendaRoute
+  AuthenticatedMinhaMarcaRoute: typeof AuthenticatedMinhaMarcaRoute
   AuthenticatedPermissoesRoute: typeof AuthenticatedPermissoesRoute
   AuthenticatedAdminCustomizacaoRoute: typeof AuthenticatedAdminCustomizacaoRoute
   AuthenticatedAlunosIdRoute: typeof AuthenticatedAlunosIdRouteWithChildren
@@ -702,6 +722,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMeusPagamentosRoute: AuthenticatedMeusPagamentosRoute,
   AuthenticatedMeusTreinosRoute: AuthenticatedMeusTreinosRoute,
   AuthenticatedMinhaAgendaRoute: AuthenticatedMinhaAgendaRoute,
+  AuthenticatedMinhaMarcaRoute: AuthenticatedMinhaMarcaRoute,
   AuthenticatedPermissoesRoute: AuthenticatedPermissoesRoute,
   AuthenticatedAdminCustomizacaoRoute: AuthenticatedAdminCustomizacaoRoute,
   AuthenticatedAlunosIdRoute: AuthenticatedAlunosIdRouteWithChildren,

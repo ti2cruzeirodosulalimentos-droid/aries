@@ -11,7 +11,7 @@ export function useAlunoBasic(alunoId: string) {
   return useQuery({
     queryKey: qk.alunoBasic(alunoId),
     queryFn: async () => {
-      const { data } = await supabase.from("alunos").select("full_name, photo_url").eq("id", alunoId).single();
+      const { data } = await supabase.from("alunos").select("full_name, photo_url, personal_id").eq("id", alunoId).single();
       return data;
     },
   });

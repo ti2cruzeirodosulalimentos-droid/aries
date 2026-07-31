@@ -4,6 +4,7 @@ import { ArrowLeft, FileDown, Loader2, Trash2, Calculator, Pencil, AlertTriangle
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
 import { requiredDobras, DOBRAS } from "@/components/AvaliacaoForm";
+import { urlToDataUrl, fetchPersonalBranding } from "@/lib/pdf/utils";
 import { ErrorState } from "@/components/ui/error-state";
 import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
@@ -35,24 +36,15 @@ function AvaliacaoDetail() {
     if (!data) return;
     setGenPdf(true);
     try {
-      let fotoUrl: string | null = null;
-      if (data.aluno.photo_url) {
-        // photo_url is a signed URL; fetch and convert to data URL for react-pdf
-        try {
-          const r = await fetch(data.aluno.photo_url);
-          const b = await r.blob();
-          fotoUrl = await new Promise<string>((res) => {
-            const fr = new FileReader();
-            fr.onload = () => res(fr.result as string);
-            fr.readAsDataURL(b);
-          });
-        } catch { fotoUrl = null; }
-      }
+      const [fotoUrl, personal] = await Promise.all([
+        urlToDataUrl(data.aluno.photo_url),
+        fetchPersonalBranding(data.aluno.personal_id),
+      ]);
       const [{ pdf }, { AvaliacaoPDF }] = await Promise.all([
         import("@react-pdf/renderer"),
         import("@/lib/pdf/AvaliacaoPDF"),
       ]);
-      const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} anamnese={data.anam} fotoUrl={fotoUrl} />).toBlob();
+      const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} anamnese={data.anam} fotoUrl={fotoUrl} personal={personal} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

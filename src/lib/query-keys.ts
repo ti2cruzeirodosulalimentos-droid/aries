@@ -30,6 +30,11 @@ export const qk = {
     exercicios: (treinoId: string) => ["treinos", "exercicios", treinoId] as const,
     exec: (treinoId: string) => ["treinos", "exec", treinoId] as const, // itens c/ mídia p/ execução
   },
+  profile: {
+    all: ["profile"] as const,
+    mine: (userId?: string) => ["profile", "mine", userId] as const,
+    branding: (personalId?: string) => ["profile", "branding", personalId] as const,
+  },
   agenda: {
     all: ["agenda"] as const,
     range: (uid: string | undefined, start: string, end: string) =>
