@@ -155,16 +155,16 @@ export function useSavePlano(alunoId: string, nutricionistaId: string | undefine
         const x = Number(n);
         return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : null;
       };
+      const nomeLimpo = typeof payload.nome === "string" ? payload.nome.trim().slice(0, 100) : payload.nome;
       const clean: Record<string, any> = {
         ...payload,
-        nome: typeof payload.nome === "string" ? payload.nome.trim().slice(0, 100) : payload.nome,
+        nome: nomeLimpo && nomeLimpo.length >= 2 ? nomeLimpo : "Plano Alimentar",
         kcal_alvo: clamp(payload.kcal_alvo, 500, 6000),
         proteina_g: clamp(payload.proteina_g, 0, 500),
-        carbo_g: clamp(payload.carbo_g, 0, 1000),
+        carboidrato_g: clamp(payload.carboidrato_g, 0, 1000),
         gordura_g: clamp(payload.gordura_g, 0, 400),
         observacoes: typeof payload.observacoes === "string" ? payload.observacoes.trim().slice(0, 2000) : payload.observacoes,
       };
-      if (!clean.nome || clean.nome.length < 2) throw new Error("Nome do plano obrigatório (mín. 2 caracteres)");
       if (planoId) {
         const { error } = await db.from("planos_alimentares").update(clean).eq("id", planoId);
         if (error) throw error;

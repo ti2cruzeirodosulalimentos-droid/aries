@@ -128,7 +128,7 @@ function Calculadora({ plano, onApply }: { plano: any; onApply: (p: any) => void
 
 function PlanoForm({ plano, onSave, saving }: { plano: any; onSave: (p: any) => void; saving: boolean }) {
   const [form, setForm] = useState({
-    nome: "", objetivo: "", kcal_alvo: "", proteina_g: "", carboidrato_g: "", gordura_g: "", agua_litros: "", observacoes: "",
+    nome: "Plano Alimentar", objetivo: "", kcal_alvo: "", proteina_g: "", carboidrato_g: "", gordura_g: "", agua_litros: "", observacoes: "",
   });
   useEffect(() => {
     if (!plano) return;
@@ -148,7 +148,7 @@ function PlanoForm({ plano, onSave, saving }: { plano: any; onSave: (p: any) => 
     <form onSubmit={(e) => { e.preventDefault(); onSave({ ...plano, ...form, kcal_alvo: num(form.kcal_alvo), proteina_g: num(form.proteina_g), carboidrato_g: num(form.carboidrato_g), gordura_g: num(form.gordura_g), agua_litros: num(form.agua_litros) }); }} className="luxury-card p-5 space-y-4">
       <p className="text-xs uppercase tracking-[0.3em] text-primary">Dados do Plano</p>
       <div className="grid md:grid-cols-2 gap-3">
-        <Field label="Nome"><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="bg-secondary/40" /></Field>
+        <Field label="Nome do plano (opcional)"><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="bg-secondary/40" /></Field>
         <Field label="Objetivo"><Input value={form.objetivo} onChange={(e) => setForm({ ...form, objetivo: e.target.value })} className="bg-secondary/40" /></Field>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
