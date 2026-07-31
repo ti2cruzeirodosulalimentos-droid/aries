@@ -37,6 +37,15 @@ const NAV_ADMIN_PERSONAL: NavItem[] = [
   { to: "/minha-marca", label: "Minha Marca", icon: ImageUp },
 ];
 
+const NAV_NUTRICIONISTA: NavItem[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/alunos", label: "Pacientes", icon: Users },
+  { to: "/agenda", label: "Agenda", icon: Calendar },
+  { to: "/mensagens", label: "Mensagens", icon: MessageCircle },
+  { to: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { to: "/minha-marca", label: "Minha Marca", icon: ImageUp },
+];
+
 const NAV_ALUNO: NavItem[] = [
   { to: "/dashboard", label: "Início", icon: LayoutDashboard },
   { to: "/meus-treinos", label: "Meus Treinos", icon: Dumbbell },
@@ -49,11 +58,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { signOut, user } = useAuth();
-  const { role, isAdmin, isAluno } = usePermissions();
+  const { role, isAdmin, isAluno, isNutricionista } = usePermissions();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
-  const baseNav = isAluno ? NAV_ALUNO : NAV_ADMIN_PERSONAL;
+  const baseNav = isAluno ? NAV_ALUNO : isNutricionista ? NAV_NUTRICIONISTA : NAV_ADMIN_PERSONAL;
   const visibleNav: NavItem[] = isAdmin
     ? [...baseNav, { to: "/admin/customizacao", label: "Customização", icon: Settings }, { to: "/permissoes", label: "Permissões", icon: Shield }]
     : baseNav;
@@ -115,7 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="absolute inset-x-0 bottom-0 border-t border-sidebar-border p-4">
             <div className="mb-1 truncate text-xs text-muted-foreground">{user?.email}</div>
             <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-primary">
-              {role === "admin" ? "Administrador" : role === "personal" ? "Personal Trainer" : "Aluno"}
+              {role === "admin" ? "Administrador" : role === "personal" ? "Personal Trainer" : role === "nutricionista" ? "Nutricionista" : "Aluno"}
             </div>
             <PwaInstall />
             <button

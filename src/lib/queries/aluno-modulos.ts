@@ -146,7 +146,7 @@ export function useRefeicoes(planoId?: string) {
 }
 
 /** Salva o plano ativo. `planoId` definido → update; senão insert. Devolve o id. */
-export function useSavePlano(alunoId: string, personalId: string | undefined, planoId?: string) {
+export function useSavePlano(alunoId: string, nutricionistaId: string | undefined, planoId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Record<string, any>) => {
@@ -172,7 +172,7 @@ export function useSavePlano(alunoId: string, personalId: string | undefined, pl
       }
       const { data, error } = await db
         .from("planos_alimentares")
-        .insert({ ...clean, aluno_id: alunoId, personal_id: personalId })
+        .insert({ ...clean, aluno_id: alunoId, nutricionista_id: nutricionistaId })
         .select("id")
         .single();
       if (error) throw error;

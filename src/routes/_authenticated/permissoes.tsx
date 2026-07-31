@@ -73,7 +73,7 @@ function PermissoesPage() {
     );
   }
 
-  function definirPapel(role: "admin" | "personal" | "aluno") {
+  function definirPapel(role: "admin" | "personal" | "nutricionista" | "aluno") {
     if (!selectedUser) return;
     setRole.mutate(
       { userId: selectedUser.id, role },
@@ -200,6 +200,9 @@ function PermissoesPage() {
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => definirPapel("personal")}>
                     Promover a Personal
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => definirPapel("nutricionista")}>
+                    Promover a Nutricionista
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => definirPapel("admin")}>
                     Promover a Admin

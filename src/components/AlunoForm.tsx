@@ -30,6 +30,7 @@ export interface AlunoFormValues {
   status?: "ativo" | "inativo" | "vencendo";
   plan_expires_at?: string | null;
   personal_id?: string | null;
+  nutricionista_id?: string | null;
 }
 
 const empty: AlunoFormValues = {
@@ -52,6 +53,17 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
     enabled: isAdmin,
     queryFn: async () => {
       const { data: rs } = await supabase.from("user_roles").select("user_id").in("role", ["personal", "admin"]);
+      const ids = (rs ?? []).map((r) => r.user_id);
+      if (!ids.length) return [];
+      const { data: ps } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      return ps ?? [];
+    },
+  });
+
+  const { data: nutricionistas = [] } = useQuery({
+    queryKey: ["nutricionistas-list"],
+    queryFn: async () => {
+      const { data: rs } = await supabase.from("user_roles").select("user_id").eq("role", "nutricionista");
       const ids = (rs ?? []).map((r) => r.user_id);
       if (!ids.length) return [];
       const { data: ps } = await supabase.from("profiles").select("id, full_name").in("id", ids);
@@ -83,6 +95,7 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
       {
         id: mode === "edit" ? values.id : undefined,
         personal_id: isAdmin && v.personal_id ? v.personal_id : user.id,
+        nutricionista_id: values.nutricionista_id || null,
         full_name: v.full_name,
         photo_url: values.photo_url || null,
         birth_date: v.birth_date ?? null,
@@ -260,6 +273,21 @@ export function AlunoForm({ initial, mode }: { initial?: AlunoFormValues; mode: 
               </select>
             </Field>
           )}
+          <Field label="Nutricionista (opcional)" className="sm:col-span-2">
+            <select
+              value={values.nutricionista_id ?? ""}
+              onChange={(e) => set("nutricionista_id", e.target.value || null)}
+              className="h-11 w-full rounded-md bg-input/60 px-3 text-sm"
+            >
+              <option value="">Nenhum</option>
+              {nutricionistas.map((n) => (
+                <option key={n.id} value={n.id}>{n.full_name ?? n.id}</option>
+              ))}
+            </select>
+            {!nutricionistas.length ? (
+              <p className="text-xs text-muted-foreground mt-1">Nenhum nutricionista cadastrado ainda.</p>
+            ) : null}
+          </Field>
           <Field label="Observações" className="sm:col-span-2">
             <Textarea value={values.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={4} className="bg-input/60" />
           </Field>

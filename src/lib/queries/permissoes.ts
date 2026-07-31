@@ -82,7 +82,7 @@ export function useSavePerms(userId: string | null) {
 export function useSetRole() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "personal" | "aluno" }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "personal" | "nutricionista" | "aluno" }) => {
       const { error } = await supabase.rpc("admin_set_role", { _target: userId, _role: role });
       if (error) throw error;
     },

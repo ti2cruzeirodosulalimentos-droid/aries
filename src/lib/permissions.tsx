@@ -16,7 +16,7 @@ export type Modulo =
   | "permissoes";
 
 export type Acao = "view" | "create" | "edit" | "delete";
-export type Role = "admin" | "personal" | "aluno";
+export type Role = "admin" | "personal" | "nutricionista" | "aluno";
 
 export interface PermissaoRow {
   modulo: Modulo;
@@ -31,6 +31,7 @@ interface PermCtx {
   role: Role;
   isAdmin: boolean;
   isPersonal: boolean;
+  isNutricionista: boolean;
   isAluno: boolean;
   alunoId: string | null;
   loading: boolean;
@@ -42,6 +43,7 @@ const Ctx = createContext<PermCtx>({
   role: "aluno",
   isAdmin: false,
   isPersonal: false,
+  isNutricionista: false,
   isAluno: true,
   alunoId: null,
   loading: true,
@@ -62,7 +64,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       ]);
       const perms = (pRes.data ?? []) as PermissaoRow[];
       const roles = (rRes.data ?? []).map((r: { role: Role }) => r.role);
-      const role: Role = roles.includes("admin") ? "admin" : roles.includes("personal") ? "personal" : "aluno";
+      const role: Role = roles.includes("admin")
+        ? "admin"
+        : roles.includes("personal")
+          ? "personal"
+          : roles.includes("nutricionista")
+            ? "nutricionista"
+            : "aluno";
       return { perms, role, alunoId: aRes.data?.id ?? null };
     },
   });
@@ -70,24 +78,30 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const role = data?.role ?? "aluno";
   const isAdmin = role === "admin";
   const isPersonal = role === "personal";
+  const isNutricionista = role === "nutricionista";
   const isAluno = role === "aluno";
   const perms = data?.perms ?? [];
 
   const can = (m: Modulo, a: Acao) => {
     if (isAdmin) return true;
     if (isPersonal) {
-      // Personal tem acesso amplo aos próprios alunos
-      if (m === "permissoes") return false;
+      // Personal cuida de treino; nutrição é módulo exclusivo do nutricionista.
+      if (m === "permissoes" || m === "nutricao") return false;
       return true;
     }
-    // aluno: apenas leitura limitada
+    if (isNutricionista) {
+      // Nutricionista cuida de dieta; treino/exercícios são exclusivos do personal.
+      if (m === "permissoes" || m === "treinos" || m === "exercicios") return false;
+      return true;
+    }
+    // aluno: apenas leitura limitada, via tabela de permissões granular
     const row = perms.find((p) => p.modulo === m);
     if (!row) return false;
     return a === "view" ? row.can_view : a === "create" ? row.can_create : a === "edit" ? row.can_edit : row.can_delete;
   };
 
   return (
-    <Ctx.Provider value={{ perms, role, isAdmin, isPersonal, isAluno, alunoId: data?.alunoId ?? null, loading: isLoading, can }}>
+    <Ctx.Provider value={{ perms, role, isAdmin, isPersonal, isNutricionista, isAluno, alunoId: data?.alunoId ?? null, loading: isLoading, can }}>
       {children}
     </Ctx.Provider>
   );

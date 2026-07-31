@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, User, ClipboardList, Activity, Dumbbell, Apple, Target, Camera, TrendingUp, MessageCircle, Lock, Unlock } from "lucide-react";
 import { useAluno, useToggleAlunoStatus } from "@/lib/queries/alunos";
 import { useMensagensTemplates } from "@/lib/queries/mensagens";
+import { usePermissions } from "@/lib/permissions";
 import { renderTemplate, whatsappLink, mailtoLink } from "@/routes/_authenticated/mensagens";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ function AlunoLayout() {
 
   const { data: aluno } = useAluno(id);
   const toggleStatus = useToggleAlunoStatus(id);
+  const { can } = usePermissions();
 
   function alternarStatus() {
     if (!aluno) return;
@@ -41,8 +43,8 @@ function AlunoLayout() {
     { to: `/alunos/${id}/anamnese`, label: "Anamnese", icon: ClipboardList },
     { to: `/alunos/${id}/avaliacoes`, label: "Avaliação", icon: Activity },
     { to: `/alunos/${id}/evolucao`, label: "Evolução", icon: TrendingUp },
-    { to: `/alunos/${id}/treinos`, label: "Treinos", icon: Dumbbell },
-    { to: `/alunos/${id}/nutricao`, label: "Nutrição", icon: Apple },
+    ...(can("treinos", "view") ? [{ to: `/alunos/${id}/treinos`, label: "Treinos", icon: Dumbbell }] : []),
+    ...(can("nutricao", "view") ? [{ to: `/alunos/${id}/nutricao`, label: "Nutrição", icon: Apple }] : []),
     { to: `/alunos/${id}/metas`, label: "Metas", icon: Target },
     { to: `/alunos/${id}/fotos`, label: "Fotos", icon: Camera },
   ];

@@ -66,6 +66,7 @@ export function useAluno(id: string) {
 export interface AlunoUpsert {
   id?: string;
   personal_id: string;
+  nutricionista_id?: string | null;
   full_name: string;
   photo_url?: string | null;
   birth_date?: string | null;
