@@ -31,6 +31,11 @@ export const qk = {
     exercicios: (treinoId: string) => ["treinos", "exercicios", treinoId] as const,
     exec: (treinoId: string) => ["treinos", "exec", treinoId] as const, // itens c/ mídia p/ execução
   },
+  alimentos: {
+    all: ["alimentos"] as const,
+    list: () => ["alimentos", "list"] as const,
+    itens: (refeicaoId?: string) => ["alimentos", "itens", refeicaoId] as const,
+  },
   profile: {
     all: ["profile"] as const,
     mine: (userId?: string) => ["profile", "mine", userId] as const,

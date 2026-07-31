@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Settings,
   ImageUp,
+  Apple,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { PwaInstall } from "./PwaInstall";
@@ -40,6 +41,7 @@ const NAV_ADMIN_PERSONAL: NavItem[] = [
 const NAV_NUTRICIONISTA: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/alunos", label: "Pacientes", icon: Users },
+  { to: "/alimentos", label: "Banco de Alimentos", icon: Apple },
   { to: "/agenda", label: "Agenda", icon: Calendar },
   { to: "/mensagens", label: "Mensagens", icon: MessageCircle },
   { to: "/financeiro", label: "Financeiro", icon: DollarSign },
@@ -64,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const baseNav = isAluno ? NAV_ALUNO : isNutricionista ? NAV_NUTRICIONISTA : NAV_ADMIN_PERSONAL;
   const visibleNav: NavItem[] = isAdmin
-    ? [...baseNav, { to: "/admin/customizacao", label: "Customização", icon: Settings }, { to: "/permissoes", label: "Permissões", icon: Shield }]
+    ? [...baseNav, { to: "/alimentos", label: "Banco de Alimentos", icon: Apple }, { to: "/admin/customizacao", label: "Customização", icon: Settings }, { to: "/permissoes", label: "Permissões", icon: Shield }]
     : baseNav;
 
   async function handleSignOut() {

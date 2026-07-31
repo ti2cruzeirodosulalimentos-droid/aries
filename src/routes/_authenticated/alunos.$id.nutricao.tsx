@@ -6,6 +6,9 @@ import {
   usePlanoAtivo, useRefeicoes, useSavePlano,
   useAddRefeicao, useUpdateRefeicao, useRemoveRefeicao,
 } from "@/lib/queries/aluno-modulos";
+import {
+  useAlimentos, useRefeicaoItens, useAddRefeicaoItem, useRemoveRefeicaoItem, somaItens,
+} from "@/lib/queries/alimentos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -210,12 +213,82 @@ function RefeicaoRow({ refeicao, onPatch, onRemove }: { refeicao: any; onPatch: 
           <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_120px_auto] gap-2 items-start">
             <Input value={local.nome} onChange={(e) => commit({ nome: e.target.value })} placeholder="Nome" className="bg-secondary/40 font-semibold" />
             <Input value={local.horario} onChange={(e) => commit({ horario: e.target.value })} placeholder="Horário" className="bg-secondary/40" />
-            <Input type="number" value={local.kcal} onChange={(e) => commit({ kcal: e.target.value })} placeholder="kcal" className="bg-secondary/40" />
+            <Input type="number" value={local.kcal} onChange={(e) => commit({ kcal: e.target.value })} placeholder="kcal (manual)" className="bg-secondary/40" />
             <button onClick={onRemove} className="text-muted-foreground hover:text-destructive p-2"><Trash2 className="size-4" /></button>
           </div>
-          <Textarea rows={2} value={local.descricao} onChange={(e) => commit({ descricao: e.target.value })} placeholder="Ex.: 2 ovos + 50g aveia + 1 banana" className="bg-secondary/40" />
+          <Textarea rows={2} value={local.descricao} onChange={(e) => commit({ descricao: e.target.value })} placeholder="Ex.: 2 ovos + 50g aveia + 1 banana (ou use os alimentos estruturados abaixo)" className="bg-secondary/40" />
+          <ItensRefeicao refeicaoId={refeicao.id} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Alimentos estruturados da refeição, com cálculo automático de kcal/macros. */
+function ItensRefeicao({ refeicaoId }: { refeicaoId: string }) {
+  const { data: alimentos = [] } = useAlimentos();
+  const { data: itens = [] } = useRefeicaoItens(refeicaoId);
+  const add = useAddRefeicaoItem(refeicaoId);
+  const remove = useRemoveRefeicaoItem(refeicaoId);
+  const [alimentoId, setAlimentoId] = useState("");
+  const [quantidade, setQuantidade] = useState("100");
+
+  const total = useMemo(() => somaItens(itens), [itens]);
+
+  const porCategoria = useMemo(() => {
+    const g = new Map<string, typeof alimentos>();
+    for (const a of alimentos) g.set(a.categoria, [...(g.get(a.categoria) ?? []), a]);
+    return g;
+  }, [alimentos]);
+
+  function adicionar() {
+    if (!alimentoId) { toast.error("Escolha um alimento"); return; }
+    const q = Number(quantidade);
+    if (!q || q <= 0) { toast.error("Informe a quantidade"); return; }
+    add.mutate({ alimentoId, quantidade: q }, { onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao adicionar") });
+    setAlimentoId("");
+    setQuantidade("100");
+  }
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-secondary/20 p-3 space-y-2">
+      <p className="text-[10px] uppercase tracking-wider text-primary">Alimentos estruturados</p>
+      {itens.length > 0 ? (
+        <ul className="space-y-1">
+          {itens.map((it) => {
+            const a = it.alimento;
+            const fator = a && a.porcao_base ? it.quantidade / a.porcao_base : 0;
+            return (
+              <li key={it.id} className="flex items-center gap-2 text-sm">
+                <span className="flex-1 truncate">{a?.nome ?? "—"} — {it.quantidade}{a?.unidade}</span>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {a ? `${Math.round(a.kcal * fator)} kcal · P${(a.proteina_g * fator).toFixed(1)} C${(a.carboidrato_g * fator).toFixed(1)} G${(a.gordura_g * fator).toFixed(1)}` : ""}
+                </span>
+                <button onClick={() => remove.mutate(it.id)} className="text-muted-foreground hover:text-destructive shrink-0"><Trash2 className="size-3.5" /></button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      <div className="grid grid-cols-[1fr_90px_auto] gap-2 items-center">
+        <select value={alimentoId} onChange={(e) => setAlimentoId(e.target.value)} className="h-9 w-full rounded-md border border-input bg-secondary/40 px-2 text-sm">
+          <option value="">Adicionar alimento...</option>
+          {Array.from(porCategoria.entries()).map(([cat, list]) => (
+            <optgroup key={cat} label={cat}>
+              {list.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </optgroup>
+          ))}
+        </select>
+        <Input type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} className="bg-secondary/40 h-9" />
+        <Button type="button" size="sm" onClick={adicionar} disabled={add.isPending} className="bg-primary text-primary-foreground hover:opacity-90">
+          <Plus className="size-3.5" />
+        </Button>
+      </div>
+      {itens.length > 0 ? (
+        <p className="text-xs text-primary font-medium pt-1 border-t border-border/40">
+          Total: {Math.round(total.kcal)} kcal · P{total.proteina_g.toFixed(1)}g · C{total.carboidrato_g.toFixed(1)}g · G{total.gordura_g.toFixed(1)}g
+        </p>
+      ) : null}
     </div>
   );
 }

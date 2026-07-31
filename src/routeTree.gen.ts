@@ -21,6 +21,7 @@ import { Route as AuthenticatedMensagensRouteImport } from './routes/_authentica
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedExerciciosRouteImport } from './routes/_authenticated/exercicios'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAlimentosRouteImport } from './routes/_authenticated/alimentos'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
 import { Route as AuthenticatedAlunosIndexRouteImport } from './routes/_authenticated/alunos.index'
 import { Route as AuthenticatedAlunosNovoRouteImport } from './routes/_authenticated/alunos.novo'
@@ -101,6 +102,11 @@ const AuthenticatedExerciciosRoute = AuthenticatedExerciciosRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAlimentosRoute = AuthenticatedAlimentosRouteImport.update({
+  id: '/alimentos',
+  path: '/alimentos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/agenda': typeof AuthenticatedAgendaRoute
+  '/alimentos': typeof AuthenticatedAlimentosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exercicios': typeof AuthenticatedExerciciosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/agenda': typeof AuthenticatedAgendaRoute
+  '/alimentos': typeof AuthenticatedAlimentosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exercicios': typeof AuthenticatedExerciciosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/agenda': typeof AuthenticatedAgendaRoute
+  '/_authenticated/alimentos': typeof AuthenticatedAlimentosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exercicios': typeof AuthenticatedExerciciosRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/agenda'
+    | '/alimentos'
     | '/dashboard'
     | '/exercicios'
     | '/financeiro'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/agenda'
+    | '/alimentos'
     | '/dashboard'
     | '/exercicios'
     | '/financeiro'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/agenda'
+    | '/_authenticated/alimentos'
     | '/_authenticated/dashboard'
     | '/_authenticated/exercicios'
     | '/_authenticated/financeiro'
@@ -502,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/alimentos': {
+      id: '/_authenticated/alimentos'
+      path: '/alimentos'
+      fullPath: '/alimentos'
+      preLoaderRoute: typeof AuthenticatedAlimentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/agenda': {
@@ -698,6 +717,7 @@ const AuthenticatedAlunosIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgendaRoute: typeof AuthenticatedAgendaRoute
+  AuthenticatedAlimentosRoute: typeof AuthenticatedAlimentosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExerciciosRoute: typeof AuthenticatedExerciciosRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
@@ -715,6 +735,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgendaRoute: AuthenticatedAgendaRoute,
+  AuthenticatedAlimentosRoute: AuthenticatedAlimentosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExerciciosRoute: AuthenticatedExerciciosRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
