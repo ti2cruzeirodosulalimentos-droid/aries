@@ -1,6 +1,6 @@
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { TreinoCompleto, TreinoExercicioRow } from "@/lib/queries/treinos";
-import type { PersonalBranding } from "@/lib/pdf/AvaliacaoPDF";
+import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
 
 interface AlunoInfo {
   full_name: string;
@@ -21,21 +21,9 @@ const colors = {
 
 const s = StyleSheet.create({
   page: { backgroundColor: colors.bg, color: colors.text, padding: 36, fontSize: 10, fontFamily: "Helvetica" },
-  cover: { flex: 1, justifyContent: "space-between" },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandText: { color: colors.gold, fontSize: 14, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
-  brandLogo: { height: 40, maxWidth: 200, objectFit: "contain" },
-  brandLogoDefault: { width: 44, height: 44, borderRadius: 22, objectFit: "cover" },
-  coverMiddle: { alignItems: "center" },
-  coverTitle: { fontSize: 36, color: colors.gold, fontFamily: "Helvetica-Bold", textAlign: "center" },
-  coverSubtitle: { fontSize: 12, color: colors.muted, marginTop: 8, letterSpacing: 6, textAlign: "center" },
-  coverPhoto: { width: 140, height: 140, borderRadius: 70, marginTop: 28, marginBottom: 18, border: `2pt solid ${colors.gold}` },
-  coverName: { fontSize: 22, color: colors.text, marginTop: 16, fontFamily: "Helvetica-Bold", textAlign: "center" },
-  coverMeta: { fontSize: 10, color: colors.muted, marginTop: 4, textAlign: "center" },
-  coverFichas: { flexDirection: "row", gap: 10, marginTop: 20, justifyContent: "center" },
+  coverFichas: { flexDirection: "row", gap: 10, marginTop: 18, justifyContent: "center" },
   fichaBadge: { width: 32, height: 32, borderRadius: 16, border: `1pt solid ${colors.gold}`, alignItems: "center", justifyContent: "center" },
   fichaBadgeText: { color: colors.gold, fontFamily: "Helvetica-Bold", fontSize: 13 },
-  coverFooter: { borderTop: `0.5pt solid ${colors.border}`, paddingTop: 10, color: colors.muted, fontSize: 8, textAlign: "center" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottom: `0.5pt solid ${colors.border}`, paddingBottom: 8, marginBottom: 16 },
   headerLeft: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   headerLetra: { color: colors.gold, fontSize: 20, fontFamily: "Helvetica-Bold" },
@@ -104,20 +92,14 @@ export function TreinoPDF({ aluno, treinos, fotoUrl, personal }: TreinoPDFProps)
     <Document title={`Ficha de Treino — ${aluno.full_name}`} author="ARIÉS">
       {/* CAPA */}
       <Page size="A4" style={s.page}>
-        <View style={s.cover}>
-          <View style={s.brandRow}>
-            {personal?.logoUrl ? (
-              <Image src={personal.logoUrl} style={s.brandLogo} />
-            ) : (
-              <Image src="/logo-aries.jpg" style={s.brandLogoDefault} />
-            )}
-          </View>
-          <View style={s.coverMiddle}>
-            <Text style={s.coverSubtitle}>PROGRAMA DE TREINO</Text>
-            <Text style={s.coverTitle}>Ficha Completa</Text>
-            {fotoUrl ? <Image src={fotoUrl} style={s.coverPhoto} /> : null}
-            <Text style={s.coverName}>{aluno.full_name}</Text>
-            <Text style={s.coverMeta}>{calcAge(aluno.birth_date)} · {aluno.gender || "—"}</Text>
+        <CoverContent
+          personal={personal}
+          overline="PROGRAMA DE TREINO"
+          title="Ficha Completa"
+          personName={aluno.full_name}
+          personMeta={`${calcAge(aluno.birth_date)} · ${aluno.gender || "—"}`}
+          personPhotoUrl={fotoUrl}
+          extra={
             <View style={s.coverFichas}>
               {treinos.map((t) => (
                 <View key={t.letra} style={s.fichaBadge}>
@@ -125,9 +107,8 @@ export function TreinoPDF({ aluno, treinos, fotoUrl, personal }: TreinoPDFProps)
                 </View>
               ))}
             </View>
-          </View>
-          <Text style={s.coverFooter}>Documento confidencial — uso exclusivo do avaliado e profissional</Text>
-        </View>
+          }
+        />
       </Page>
 
       {/* UMA PÁGINA POR FICHA */}

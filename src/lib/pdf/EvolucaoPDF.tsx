@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import type { PersonalBranding } from "@/lib/pdf/AvaliacaoPDF";
+import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
 
 const colors = {
   bg: "#0A0A0A", card: "#161616", gold: "#D4AF37", goldLight: "#F5D76E", text: "#FFFFFF",
@@ -8,19 +8,6 @@ const colors = {
 
 const s = StyleSheet.create({
   page: { backgroundColor: colors.bg, color: colors.text, padding: 36, fontSize: 10, fontFamily: "Helvetica" },
-  // Capa
-  cover: { flex: 1, justifyContent: "space-between" },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandLogo: { height: 40, maxWidth: 200, objectFit: "contain" },
-  brandText: { color: colors.gold, fontSize: 14, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
-  brandLogoDefault: { width: 44, height: 44, borderRadius: 22, objectFit: "cover" },
-  coverMiddle: { alignItems: "center" },
-  coverTitle: { fontSize: 36, color: colors.gold, fontFamily: "Helvetica-Bold", textAlign: "center" },
-  coverSubtitle: { fontSize: 12, color: colors.muted, marginTop: 8, letterSpacing: 6, textAlign: "center" },
-  coverPhoto: { width: 140, height: 140, borderRadius: 70, marginTop: 28, marginBottom: 18, border: `2pt solid ${colors.gold}` },
-  coverName: { fontSize: 22, color: colors.text, marginTop: 16, fontFamily: "Helvetica-Bold", textAlign: "center" },
-  coverMeta: { fontSize: 10, color: colors.muted, marginTop: 4, textAlign: "center" },
-  coverFooter: { borderTop: `0.5pt solid ${colors.border}`, paddingTop: 10, color: colors.muted, fontSize: 8, textAlign: "center" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottom: `0.5pt solid ${colors.border}`, paddingBottom: 8, marginBottom: 16 },
   brand: { color: colors.gold, fontSize: 12, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
   sub: { color: colors.muted, fontSize: 8 },
@@ -74,23 +61,14 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
     <Document title={`Evolução — ${alunoNome}`} author="ARIÉS">
       {/* CAPA */}
       <Page size="A4" style={s.page}>
-        <View style={s.cover}>
-          <View style={s.brandRow}>
-            {personal?.logoUrl ? (
-              <Image src={personal.logoUrl} style={s.brandLogo} />
-            ) : (
-              <Image src="/logo-aries.jpg" style={s.brandLogoDefault} />
-            )}
-          </View>
-          <View style={s.coverMiddle}>
-            <Text style={s.coverSubtitle}>RELATÓRIO DE EVOLUÇÃO</Text>
-            <Text style={s.coverTitle}>Transformação em Números</Text>
-            {fotoUrl ? <Image src={fotoUrl} style={s.coverPhoto} /> : null}
-            <Text style={s.coverName}>{alunoNome}</Text>
-            <Text style={s.coverMeta}>Período de {periodo.de} a {periodo.ate}</Text>
-          </View>
-          <Text style={s.coverFooter}>Documento confidencial — uso exclusivo do avaliado e profissional</Text>
-        </View>
+        <CoverContent
+          personal={personal}
+          overline="RELATÓRIO DE EVOLUÇÃO"
+          title="Transformação em Números"
+          personName={alunoNome}
+          personMeta={`Período de ${periodo.de} a ${periodo.ate}`}
+          personPhotoUrl={fotoUrl}
+        />
       </Page>
 
       <Page size="A4" style={s.page}>
