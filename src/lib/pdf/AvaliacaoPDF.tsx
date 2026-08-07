@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Database } from "@/integrations/supabase/types";
 import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
+import { classificarPG } from "@/lib/calculos/fisica";
 
 type Avaliacao = Database["public"]["Tables"]["avaliacoes_fisicas"]["Row"];
 type Aluno = Database["public"]["Tables"]["alunos"]["Row"];
@@ -40,7 +41,58 @@ const s = StyleSheet.create({
   parqLabel: { color: colors.text, fontSize: 9, flex: 1 },
   parqYes: { color: "#E5564B", fontSize: 9, fontFamily: "Helvetica-Bold" },
   parqNo: { color: colors.muted, fontSize: 9 },
+  refCard: { borderRadius: 6, border: `0.5pt solid ${colors.border}`, overflow: "hidden" },
+  refRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 10, borderBottom: `0.5pt solid ${colors.border}` },
+  refRowActive: { backgroundColor: colors.gold },
+  refLabel: { color: colors.text, fontSize: 9 },
+  refLabelActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
+  refValue: { color: colors.muted, fontSize: 9 },
+  refValueActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
 });
+
+const IMC_TABLE: Array<[string, string]> = [
+  ["Abaixo do peso", "< 18.5"],
+  ["Eutrofia", "18.5 – 24.9"],
+  ["Sobrepeso", "25.0 – 29.9"],
+  ["Obesidade grau I", "30.0 – 34.9"],
+  ["Obesidade grau II", "35.0 – 39.9"],
+  ["Obesidade grau III", "≥ 40.0"],
+];
+
+function pgTable(genero: string | null): Array<[string, string]> {
+  if (genero === "feminino") {
+    return [
+      ["Essencial", "< 14%"],
+      ["Atlética", "14% – 20.9%"],
+      ["Boa forma", "21% – 24.9%"],
+      ["Aceitável", "25% – 31.9%"],
+      ["Obesidade", "≥ 32%"],
+    ];
+  }
+  return [
+    ["Essencial", "< 6%"],
+    ["Atlética", "6% – 13.9%"],
+    ["Boa forma", "14% – 17.9%"],
+    ["Aceitável", "18% – 24.9%"],
+    ["Obesidade", "≥ 25%"],
+  ];
+}
+
+function RefTable({ rows, current }: { rows: Array<[string, string]>; current: string | null }) {
+  return (
+    <View style={s.refCard}>
+      {rows.map(([label, value], i) => {
+        const active = label === current;
+        return (
+          <View key={label} style={[s.refRow, active ? s.refRowActive : null, i === rows.length - 1 ? { borderBottom: 0 } : null]}>
+            <Text style={active ? s.refLabelActive : s.refLabel}>{label}</Text>
+            <Text style={active ? s.refValueActive : s.refValue}>{value}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 function fmt(v: number | null | undefined, suffix = "", digits = 2) {
   if (v === null || v === undefined || isNaN(Number(v))) return "—";
@@ -94,7 +146,7 @@ export interface AvaliacaoPDFProps {
 }
 
 export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal }: AvaliacaoPDFProps) {
-  const total = anamnese ? 4 : 3;
+  const total = anamnese ? 5 : 4;
   return (
     <Document title={`Avaliação Física — ${aluno.full_name}`} author="ARIÉS">
       {/* CAPA */}
@@ -280,6 +332,33 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal 
             <View style={s.card}><Text style={{ color: colors.text, fontSize: 10, lineHeight: 1.5 }}>{a.observacoes}</Text></View>
           </>
         ) : null}
+
+        <PageFooter page={anamnese ? 4 : 3} total={total} aluno={aluno.full_name} />
+      </Page>
+
+      {/* TABELAS DE REFERÊNCIA */}
+      <Page size="A4" style={s.page}>
+        <View style={s.header}>
+          <Text style={s.headerBrand}>TABELAS DE REFERÊNCIA</Text>
+          <Text style={s.headerMeta}>{aluno.full_name}</Text>
+        </View>
+
+        <View style={[s.bigStat, { marginBottom: 18 }]}>
+          <Text style={s.bigStatLabel}>FAIXA DE PESO IDEAL</Text>
+          <Text style={s.bigStatValue}>{a.peso_ideal_min ? `${fmt(a.peso_ideal_min)} – ${fmt(a.peso_ideal_max)} kg` : "—"}</Text>
+          <Text style={s.bigStatHint}>peso atual: {fmt(a.peso, " kg")}</Text>
+        </View>
+
+        <View style={[s.row, { gap: 16 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.sectionTitle}>CLASSIFICAÇÃO DO IMC (OMS)</Text>
+            <RefTable rows={IMC_TABLE} current={a.imc_classificacao} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.sectionTitle}>% DE GORDURA — {a.genero === "feminino" ? "MULHER" : "HOMEM"}</Text>
+            <RefTable rows={pgTable(a.genero)} current={a.percentual_gordura != null ? classificarPG(Number(a.percentual_gordura), a.genero === "feminino" ? "feminino" : "masculino") : null} />
+          </View>
+        </View>
 
         <PageFooter page={total} total={total} aluno={aluno.full_name} />
       </Page>
