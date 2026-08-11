@@ -147,6 +147,21 @@ export interface AvaliacaoPDFProps {
 
 export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal }: AvaliacaoPDFProps) {
   const total = anamnese ? 5 : 4;
+
+  // Faixa de %gordura usada no cálculo do peso ideal por composição corporal
+  // (mesma regra de src/lib/calculos/fisica.ts:composicao — preserva massa magra).
+  const isFeminino = a.genero === "feminino";
+  const gFaixaMin = isFeminino ? 18 : 10;
+  const gFaixaMax = isFeminino ? 25 : 20;
+  const massaMagraNum = a.massa_magra != null ? Number(a.massa_magra) : null;
+  const gorduraIdealMin = massaMagraNum != null && a.peso_ideal_min != null ? Number(a.peso_ideal_min) - massaMagraNum : null;
+  const gorduraIdealMax = massaMagraNum != null && a.peso_ideal_max != null ? Number(a.peso_ideal_max) - massaMagraNum : null;
+  // Peso ideal pelo IMC (faixa "Eutrofia" da OMS: 18.5–24.9) — conceito diferente
+  // do peso ideal por composição corporal, calculado só a partir da altura.
+  const alturaNum = a.altura != null ? Number(a.altura) : null;
+  const pesoImcMin = alturaNum ? 18.5 * alturaNum * alturaNum : null;
+  const pesoImcMax = alturaNum ? 24.9 * alturaNum * alturaNum : null;
+
   return (
     <Document title={`Avaliação Física — ${aluno.full_name}`} author="ARIÉS">
       {/* CAPA */}
@@ -343,10 +358,30 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal 
           <Text style={s.headerMeta}>{aluno.full_name}</Text>
         </View>
 
-        <View style={[s.bigStat, { marginBottom: 18 }]}>
-          <Text style={s.bigStatLabel}>FAIXA DE PESO IDEAL</Text>
-          <Text style={s.bigStatValue}>{a.peso_ideal_min ? `${fmt(a.peso_ideal_min)} – ${fmt(a.peso_ideal_max)} kg` : "—"}</Text>
-          <Text style={s.bigStatHint}>peso atual: {fmt(a.peso, " kg")}</Text>
+        <Text style={s.sectionTitle}>METAS E FAIXAS IDEAIS</Text>
+        <View style={s.card}>
+          <View style={s.row}>
+            <Field
+              label="Peso ideal (composição corporal)"
+              value={a.peso_ideal_min != null ? `${fmt(a.peso_ideal_min)} – ${fmt(a.peso_ideal_max)} kg` : "—"}
+              width="cell"
+            />
+            <Field
+              label="Peso ideal (IMC 18.5–24.9)"
+              value={pesoImcMin != null ? `${fmt(pesoImcMin)} – ${fmt(pesoImcMax)} kg` : "—"}
+              width="cell"
+            />
+            <Field
+              label={`% Gordura ideal (${a.genero === "feminino" ? "mulher" : "homem"})`}
+              value={`${gFaixaMin}% – ${gFaixaMax}%`}
+              width="cell"
+            />
+            <Field
+              label="Massa gorda ideal"
+              value={gorduraIdealMin != null ? `${fmt(gorduraIdealMin)} – ${fmt(gorduraIdealMax)} kg` : "—"}
+              width="cell"
+            />
+          </View>
         </View>
 
         <View style={[s.row, { gap: 16 }]}>
