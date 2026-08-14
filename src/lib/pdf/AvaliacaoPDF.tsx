@@ -1,7 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Database } from "@/integrations/supabase/types";
 import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
-import { classificarPG } from "@/lib/calculos/fisica";
 
 type Avaliacao = Database["public"]["Tables"]["avaliacoes_fisicas"]["Row"];
 type Aluno = Database["public"]["Tables"]["alunos"]["Row"];
@@ -48,6 +47,14 @@ const s = StyleSheet.create({
   refLabelActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
   refValue: { color: colors.muted, fontSize: 9 },
   refValueActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
+  acsmRow: { flexDirection: "row", borderBottom: `0.5pt solid ${colors.border}`, alignItems: "center" },
+  acsmLabelCell: { flex: 1.3, fontSize: 8, color: colors.text, paddingVertical: 6, paddingLeft: 8 },
+  refLabelActiveInline: { color: colors.gold, fontFamily: "Helvetica-Bold" },
+  acsmHeadText: { color: colors.gold, fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
+  acsmCell: { flex: 1, textAlign: "center", fontSize: 8, color: colors.muted, paddingVertical: 6 },
+  acsmColActive: { color: "#000000", backgroundColor: colors.gold },
+  acsmCellActive: { color: "#000000", backgroundColor: colors.gold, fontFamily: "Helvetica-Bold" },
+  acsmSource: { color: colors.muted, fontSize: 6, textAlign: "right", paddingVertical: 4, paddingRight: 8, fontStyle: "italic" },
 });
 
 const IMC_TABLE: Array<[string, string]> = [
@@ -58,25 +65,6 @@ const IMC_TABLE: Array<[string, string]> = [
   ["Obesidade grau II", "35.0 – 39.9"],
   ["Obesidade grau III", "≥ 40.0"],
 ];
-
-function pgTable(genero: string | null): Array<[string, string]> {
-  if (genero === "feminino") {
-    return [
-      ["Essencial", "< 14%"],
-      ["Atlética", "14% – 20.9%"],
-      ["Boa forma", "21% – 24.9%"],
-      ["Aceitável", "25% – 31.9%"],
-      ["Obesidade", "≥ 32%"],
-    ];
-  }
-  return [
-    ["Essencial", "< 6%"],
-    ["Atlética", "6% – 13.9%"],
-    ["Boa forma", "14% – 17.9%"],
-    ["Aceitável", "18% – 24.9%"],
-    ["Obesidade", "≥ 25%"],
-  ];
-}
 
 function RefTable({ rows, current }: { rows: Array<[string, string]>; current: string | null }) {
   return (
@@ -90,6 +78,50 @@ function RefTable({ rows, current }: { rows: Array<[string, string]>; current: s
           </View>
         );
       })}
+    </View>
+  );
+}
+
+// Tabela de % de gordura ideal por idade/sexo — ACSM (Lea & Febiger, 1986),
+// referência clássica de fisiologia do exercício. Substitui a faixa fixa
+// (10–20% / 18–25%) usada anteriormente por um alvo específico da faixa etária.
+const ACSM_GORDURA_IDEAL: Array<{ faixa: string; min: number; max: number | null; homens: number; mulheres: number }> = [
+  { faixa: "18-29", min: 18, max: 29, homens: 14, mulheres: 19 },
+  { faixa: "30-39", min: 30, max: 39, homens: 16, mulheres: 21 },
+  { faixa: "40-49", min: 40, max: 49, homens: 17, mulheres: 22 },
+  { faixa: "50-59", min: 50, max: 59, homens: 18, mulheres: 23 },
+  { faixa: "60+", min: 60, max: null, homens: 21, mulheres: 26 },
+];
+
+function acsmFaixaIndex(idade: number | null): number | null {
+  if (idade == null || isNaN(idade)) return null;
+  const idx = ACSM_GORDURA_IDEAL.findIndex((f) => idade >= f.min && (f.max === null || idade <= f.max));
+  return idx === -1 ? (idade < 18 ? 0 : ACSM_GORDURA_IDEAL.length - 1) : idx;
+}
+
+function AcsmTable({ idade, feminino }: { idade: number | null; feminino: boolean }) {
+  const idx = acsmFaixaIndex(idade);
+  return (
+    <View style={s.refCard}>
+      <View style={[s.acsmRow, { backgroundColor: colors.card }]}>
+        <Text style={[s.acsmLabelCell, s.acsmHeadText]}>Idade</Text>
+        {ACSM_GORDURA_IDEAL.map((f, i) => (
+          <Text key={f.faixa} style={[s.acsmCell, s.acsmHeadText, i === idx ? s.acsmColActive : null]}>{f.faixa}</Text>
+        ))}
+      </View>
+      <View style={s.acsmRow}>
+        <Text style={[s.acsmLabelCell, !feminino ? s.refLabelActiveInline : null]}>Homens</Text>
+        {ACSM_GORDURA_IDEAL.map((f, i) => (
+          <Text key={f.faixa} style={[s.acsmCell, !feminino && i === idx ? s.acsmCellActive : null]}>{f.homens}%</Text>
+        ))}
+      </View>
+      <View style={[s.acsmRow, { borderBottom: 0 }]}>
+        <Text style={[s.acsmLabelCell, feminino ? s.refLabelActiveInline : null]}>Mulheres</Text>
+        {ACSM_GORDURA_IDEAL.map((f, i) => (
+          <Text key={f.faixa} style={[s.acsmCell, feminino && i === idx ? s.acsmCellActive : null]}>{f.mulheres}%</Text>
+        ))}
+      </View>
+      <Text style={s.acsmSource}>Fonte: ACSM — Lea & Febiger, 1986</Text>
     </View>
   );
 }
@@ -148,19 +180,25 @@ export interface AvaliacaoPDFProps {
 export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal }: AvaliacaoPDFProps) {
   const total = anamnese ? 5 : 4;
 
-  // Faixa de %gordura usada no cálculo do peso ideal por composição corporal
-  // (mesma regra de src/lib/calculos/fisica.ts:composicao — preserva massa magra).
   const isFeminino = a.genero === "feminino";
-  const gFaixaMin = isFeminino ? 18 : 10;
-  const gFaixaMax = isFeminino ? 25 : 20;
   const massaMagraNum = a.massa_magra != null ? Number(a.massa_magra) : null;
-  const gorduraIdealMin = massaMagraNum != null && a.peso_ideal_min != null ? Number(a.peso_ideal_min) - massaMagraNum : null;
-  const gorduraIdealMax = massaMagraNum != null && a.peso_ideal_max != null ? Number(a.peso_ideal_max) - massaMagraNum : null;
   // Peso ideal pelo IMC (faixa "Eutrofia" da OMS: 18.5–24.9) — conceito diferente
   // do peso ideal por composição corporal, calculado só a partir da altura.
   const alturaNum = a.altura != null ? Number(a.altura) : null;
   const pesoImcMin = alturaNum ? 18.5 * alturaNum * alturaNum : null;
   const pesoImcMax = alturaNum ? 24.9 * alturaNum * alturaNum : null;
+
+  // % de gordura ideal por idade/sexo — tabela ACSM (Lea & Febiger, 1986).
+  // Peso e massa gorda ideais são derivados desse alvo preservando a massa magra atual.
+  const idadeNum = a.idade != null ? Number(a.idade) : null;
+  const acsmIdx = acsmFaixaIndex(idadeNum);
+  const acsmFaixa = acsmIdx != null ? ACSM_GORDURA_IDEAL[acsmIdx] : null;
+  const gorduraIdealAcsm = acsmFaixa ? (isFeminino ? acsmFaixa.mulheres : acsmFaixa.homens) : null;
+  const pesoIdealAcsm = massaMagraNum != null && gorduraIdealAcsm != null ? massaMagraNum / (1 - gorduraIdealAcsm / 100) : null;
+  const massaGordaIdealAcsm = pesoIdealAcsm != null && massaMagraNum != null ? pesoIdealAcsm - massaMagraNum : null;
+  const pesoAtualNum = a.peso != null ? Number(a.peso) : null;
+  const diffPeso = pesoAtualNum != null && pesoIdealAcsm != null ? pesoAtualNum - pesoIdealAcsm : null;
+  const diffPesoLabel = diffPeso == null ? "—" : Math.abs(diffPeso) < 0.5 ? "No peso ideal" : diffPeso > 0 ? `Perder ${fmt(Math.abs(diffPeso))} kg` : `Ganhar ${fmt(Math.abs(diffPeso))} kg`;
 
   return (
     <Document title={`Avaliação Física — ${aluno.full_name}`} author="ARIÉS">
@@ -361,39 +399,26 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal 
         <Text style={s.sectionTitle}>METAS E FAIXAS IDEAIS</Text>
         <View style={s.card}>
           <View style={s.row}>
+            <Field label="Peso ideal" value={fmt(pesoIdealAcsm, " kg")} width="cell3" />
+            <Field label="Gordura ideal" value={fmt(gorduraIdealAcsm, "%", 0)} width="cell3" />
+            <Field label="Massa gorda ideal" value={fmt(massaGordaIdealAcsm, " kg")} width="cell3" />
+            <Field label="Faixa etária considerada" value={acsmFaixa ? `${acsmFaixa.faixa} anos` : "—"} width="cell3" />
             <Field
-              label="Peso ideal (composição corporal)"
-              value={a.peso_ideal_min != null ? `${fmt(a.peso_ideal_min)} – ${fmt(a.peso_ideal_max)} kg` : "—"}
-              width="cell"
-            />
-            <Field
-              label="Peso ideal (IMC 18.5–24.9)"
+              label="Peso ideal pelo IMC (18.5–24.9)"
               value={pesoImcMin != null ? `${fmt(pesoImcMin)} – ${fmt(pesoImcMax)} kg` : "—"}
-              width="cell"
+              width="cell3"
             />
-            <Field
-              label={`% Gordura ideal (${a.genero === "feminino" ? "mulher" : "homem"})`}
-              value={`${gFaixaMin}% – ${gFaixaMax}%`}
-              width="cell"
-            />
-            <Field
-              label="Massa gorda ideal"
-              value={gorduraIdealMin != null ? `${fmt(gorduraIdealMin)} – ${fmt(gorduraIdealMax)} kg` : "—"}
-              width="cell"
-            />
+            <Field label="Diferença para o peso ideal" value={diffPesoLabel} width="cell3" />
           </View>
         </View>
 
-        <View style={[s.row, { gap: 16 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.sectionTitle}>CLASSIFICAÇÃO DO IMC (OMS)</Text>
-            <RefTable rows={IMC_TABLE} current={a.imc_classificacao} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.sectionTitle}>% DE GORDURA — {a.genero === "feminino" ? "MULHER" : "HOMEM"}</Text>
-            <RefTable rows={pgTable(a.genero)} current={a.percentual_gordura != null ? classificarPG(Number(a.percentual_gordura), a.genero === "feminino" ? "feminino" : "masculino") : null} />
-          </View>
+        <Text style={s.sectionTitle}>CLASSIFICAÇÃO DO IMC (OMS)</Text>
+        <View style={{ width: "60%" }}>
+          <RefTable rows={IMC_TABLE} current={a.imc_classificacao} />
         </View>
+
+        <Text style={s.sectionTitle}>% GORDURA IDEAL POR IDADE (ACSM)</Text>
+        <AcsmTable idade={idadeNum} feminino={isFeminino} />
 
         <PageFooter page={total} total={total} aluno={aluno.full_name} />
       </Page>
