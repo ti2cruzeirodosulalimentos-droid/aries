@@ -52,6 +52,16 @@ export const DOBRAS = [
 type DobraKey = typeof DOBRAS[number][0];
 type SubView = "menu" | "config" | "composicao" | "perimetros" | "vo2" | "neuro" | "postural" | "obs";
 
+// Pra onde mandar o usuário quando a validação de um campo falha no Salvar.
+const FIELD_VIEW: Record<string, SubView> = {
+  data_avaliacao: "config",
+  genero: "config",
+  protocolo: "config",
+  peso: "composicao",
+  altura: "composicao",
+  observacoes: "obs",
+};
+
 // Campos numéricos vindos do banco — normalizados com Number() ao carregar para edição,
 // pois calcularAvaliacao() exige typeof "number" (Supabase pode retornar numeric como string).
 const NUMERIC_KEYS = [
@@ -186,7 +196,15 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
       protocolo: v.protocolo,
       observacoes: v.observacoes,
     });
-    if (!check.ok) { toast.error(check.message); return; }
+    if (!check.ok) {
+      toast.error(check.message);
+      // Leva direto pra aba com o campo faltando — sem isso a pessoa fica
+      // no menu vendo só o toast e clicando em Salvar sem saber o que corrigir.
+      const badField = Object.keys(check.errors)[0];
+      const target = badField ? FIELD_VIEW[badField] : undefined;
+      if (target) setView(target);
+      return;
+    }
     const bilatPayload: Record<string, number | null> = {};
     for (const [k] of CIRC_BILAT) {
       bilatPayload[`circ_${k}_d`] = v[`circ_${k}_d`] ?? null;
