@@ -96,7 +96,7 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
               <Text style={s.statValue}>{b.v}</Text>
               {b.d && (
                 <Text style={[s.delta, { color: b.d.good ? colors.good : colors.bad }]}>
-                  {b.d.d > 0 ? "▲" : "▼"} {Math.abs(b.d.d).toFixed(1)}{b.suf}
+                  {b.d.d > 0 ? "+" : "-"}{Math.abs(b.d.d).toFixed(1)}{b.suf}
                 </Text>
               )}
             </View>
