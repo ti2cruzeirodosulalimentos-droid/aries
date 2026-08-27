@@ -238,7 +238,12 @@ export function useEvolucao<T = any>(alunoId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("avaliacoes_fisicas")
-        .select("id, data_avaliacao, peso, percentual_gordura, massa_magra, massa_gorda, imc, circ_cintura, circ_quadril")
+        .select(
+          "id, data_avaliacao, peso, percentual_gordura, massa_magra, massa_gorda, imc, rcq, " +
+          "circ_pescoco, circ_ombro, circ_torax, circ_cintura, circ_abdomen, circ_quadril, " +
+          "circ_braco_d, circ_braco_e, circ_antebraco_d, circ_antebraco_e, " +
+          "circ_coxa_d, circ_coxa_e, circ_panturrilha_d, circ_panturrilha_e",
+        )
         .eq("aluno_id", alunoId)
         .order("data_avaliacao", { ascending: true });
       if (error) throw error;
