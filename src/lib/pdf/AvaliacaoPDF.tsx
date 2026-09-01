@@ -4,7 +4,6 @@ import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
 
 type Avaliacao = Database["public"]["Tables"]["avaliacoes_fisicas"]["Row"];
 type Aluno = Database["public"]["Tables"]["alunos"]["Row"];
-type Anamnese = Database["public"]["Tables"]["anamneses"]["Row"];
 
 const colors = {
   bg: "#0A0A0A",
@@ -36,10 +35,6 @@ const s = StyleSheet.create({
   bigStatHint: { color: colors.muted, fontSize: 8, marginTop: 4 },
   pageFooter: { position: "absolute", bottom: 20, left: 36, right: 36, borderTop: `0.5pt solid ${colors.border}`, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
   footerText: { color: colors.muted, fontSize: 7 },
-  parqRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, borderBottom: `0.5pt solid ${colors.border}` },
-  parqLabel: { color: colors.text, fontSize: 9, flex: 1 },
-  parqYes: { color: "#E5564B", fontSize: 9, fontFamily: "Helvetica-Bold" },
-  parqNo: { color: colors.muted, fontSize: 9 },
   refCard: { borderRadius: 6, border: `0.5pt solid ${colors.border}`, overflow: "hidden" },
   refRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 10, borderBottom: `0.5pt solid ${colors.border}` },
   refRowActive: { backgroundColor: colors.gold },
@@ -172,13 +167,12 @@ function Field({ label, value, width }: { label: string; value: string; width?: 
 export interface AvaliacaoPDFProps {
   aluno: Aluno;
   avaliacao: Avaliacao;
-  anamnese?: Anamnese | null;
   fotoUrl?: string | null;
   personal?: PersonalBranding | null;
 }
 
-export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal }: AvaliacaoPDFProps) {
-  const total = anamnese ? 5 : 4;
+export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal }: AvaliacaoPDFProps) {
+  const total = 4;
 
   const isFeminino = a.genero === "feminino";
   const massaMagraNum = a.massa_magra != null ? Number(a.massa_magra) : null;
@@ -213,81 +207,6 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal 
           personPhotoUrl={fotoUrl}
         />
       </Page>
-
-      {/* ANAMNESE */}
-      {anamnese ? (
-        <Page size="A4" style={s.page}>
-          <View style={s.header}>
-            <Text style={s.headerBrand}>ANAMNESE CLÍNICA</Text>
-            <Text style={s.headerMeta}>{aluno.full_name} · {fmtDate(anamnese.data_anamnese)}</Text>
-          </View>
-
-          <Text style={s.sectionTitle}>HISTÓRICO CLÍNICO</Text>
-          <View style={s.card}>
-            <View style={s.row}>
-              <Field label="Doenças crônicas" value={anamnese.doencas_cronicas ?? "Nenhuma relatada"} />
-              <Field label="Cirurgias" value={anamnese.cirurgias ?? "Nenhuma"} />
-              <Field label="Medicamentos" value={anamnese.medicamentos ?? "Nenhum"} />
-              <Field label="Lesões" value={anamnese.lesoes ?? "Nenhuma"} />
-              <Field label="Alergias" value={anamnese.alergias ?? "Nenhuma"} />
-              <Field label="Histórico familiar" value={anamnese.historico_familiar ?? "—"} />
-            </View>
-          </View>
-
-          <Text style={s.sectionTitle}>HÁBITOS DE VIDA</Text>
-          <View style={s.card}>
-            <View style={s.row}>
-              <Field label="Fumante" value={anamnese.fumante ? "Sim" : "Não"} width="cell4" />
-              <Field label="Álcool" value={anamnese.alcool ?? "—"} width="cell4" />
-              <Field label="Sono" value={anamnese.qualidade_sono ?? "—"} width="cell4" />
-              <Field label="Horas/sono" value={anamnese.horas_sono ? `${anamnese.horas_sono}h` : "—"} width="cell4" />
-              <Field label="Stress" value={anamnese.nivel_stress ?? "—"} width="cell4" />
-              <Field label="Hidratação" value={anamnese.hidratacao_litros ? `${anamnese.hidratacao_litros}L/dia` : "—"} width="cell4" />
-              <Field label="Alimentação" value={anamnese.alimentacao ?? "—"} />
-            </View>
-          </View>
-
-          <Text style={s.sectionTitle}>ATIVIDADE & OBJETIVOS</Text>
-          <View style={s.card}>
-            <View style={s.row}>
-              <Field label="Pratica atividade" value={anamnese.pratica_atividade ? "Sim" : "Não"} />
-              <Field label="Experiência em musculação" value={anamnese.experiencia_musculacao ?? "—"} />
-              <Field label="Atividade descrição" value={anamnese.atividade_descricao ?? "—"} />
-              <Field label="Tempo inativo" value={anamnese.tempo_inatividade ?? "—"} />
-              <Field label="Objetivo principal" value={anamnese.objetivo_principal ?? "—"} />
-              <Field label="Objetivo secundário" value={anamnese.objetivo_secundario ?? "—"} />
-              <Field label="Prazo" value={anamnese.prazo_objetivo ?? "—"} />
-              <Field label="Motivação" value={anamnese.motivacao ?? "—"} />
-            </View>
-          </View>
-
-          <Text style={s.sectionTitle}>PAR-Q</Text>
-          <View style={s.card}>
-            {[
-              ["Algum médico já disse que você possui problema cardíaco?", anamnese.parq_problema_cardiaco],
-              ["Sente dor no peito ao realizar atividade física?", anamnese.parq_dor_peito],
-              ["Apresentou dor no peito no último mês?", anamnese.parq_dor_peito],
-              ["Tende a perder o equilíbrio devido a tontura ou perda de consciência?", anamnese.parq_tontura],
-              ["Possui algum problema ósseo ou articular que poderia piorar com a prática?", anamnese.parq_problema_osseo],
-              ["Tem pressão arterial elevada?", anamnese.parq_pressao_alta],
-              ["Toma algum medicamento para pressão arterial ou coração?", anamnese.parq_medicamento_pressao],
-              ["Sabe de alguma outra razão para não fazer atividade física?", anamnese.parq_outras_razoes],
-            ].map(([q, v], i) => (
-              <View key={i} style={s.parqRow}>
-                <Text style={s.parqLabel}>{q as string}</Text>
-                <Text style={v ? s.parqYes : s.parqNo}>{v ? "SIM" : "Não"}</Text>
-              </View>
-            ))}
-            {anamnese.parq_observacoes ? (
-              <View style={{ marginTop: 8 }}>
-                <Text style={s.label}>Observações</Text>
-                <Text style={s.value}>{anamnese.parq_observacoes}</Text>
-              </View>
-            ) : null}
-          </View>
-          <PageFooter page={2} total={total} aluno={aluno.full_name} />
-        </Page>
-      ) : null}
 
       {/* MEDIDAS */}
       <Page size="A4" style={s.page}>
@@ -330,7 +249,7 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal 
             <Field label="RCQ" value={a.rcq ? `${a.rcq} — ${a.rcq_classificacao ?? ""}` : "—"} width="cell3" />
           </View>
         </View>
-        <PageFooter page={anamnese ? 3 : 2} total={total} aluno={aluno.full_name} />
+        <PageFooter page={2} total={total} aluno={aluno.full_name} />
       </Page>
 
       {/* DOBRAS & RESULTADOS */}
@@ -386,7 +305,7 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, anamnese, fotoUrl, personal 
           </>
         ) : null}
 
-        <PageFooter page={anamnese ? 4 : 3} total={total} aluno={aluno.full_name} />
+        <PageFooter page={3} total={total} aluno={aluno.full_name} />
       </Page>
 
       {/* TABELAS DE REFERÊNCIA */}

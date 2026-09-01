@@ -44,7 +44,7 @@ function AvaliacaoDetail() {
         import("@react-pdf/renderer"),
         import("@/lib/pdf/AvaliacaoPDF"),
       ]);
-      const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} anamnese={data.anam} fotoUrl={fotoUrl} personal={personal} />).toBlob();
+      const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} fotoUrl={fotoUrl} personal={personal} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
