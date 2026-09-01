@@ -1,11 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, RotateCcw, Check, Dumbbell, Timer } from "lucide-react";
-import { useTreino, useTreinoExec } from "@/lib/queries/treinos";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, RotateCcw, Check, Dumbbell, Timer, Trophy, History } from "lucide-react";
+import { useTreino, useTreinoExec, useHistoricoExercicio, useRegistrarSerie } from "@/lib/queries/treinos";
 import { ErrorState } from "@/components/ui/error-state";
 import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+const ProgressaoChart = lazy(() => import("@/components/ProgressaoChart"));
+
+function primeiroNumero(s: string | null | undefined): string {
+  if (!s) return "";
+  const m = s.match(/\d+/);
+  return m ? m[0] : "";
+}
+function formatDateShort(d: string) {
+  const [, m, day] = d.split("-");
+  return `${day}/${m}`;
+}
 
 export const Route = createFileRoute("/_authenticated/alunos/$id/treinos/$treinoId/executar")({
   component: ExecutarTreino,
@@ -52,6 +65,36 @@ function ExecutarTreino() {
     return totSeries > 0 ? Math.round((feitas / totSeries) * 100) : 0;
   }, [itens, done]);
 
+  // Progressão de carga do exercício atual
+  const exercicioId = atual?.exercicio?.id;
+  const { data: historico } = useHistoricoExercicio(id, exercicioId);
+  const registrar = useRegistrarSerie(id, exercicioId);
+  const [showHistorico, setShowHistorico] = useState(false);
+  const [cargaInput, setCargaInput] = useState("");
+  const [repsInput, setRepsInput] = useState("");
+
+  const recorde = useMemo(() => {
+    return (historico ?? []).reduce((max: number | null, r) => (r.carga_kg != null && (max == null || r.carga_kg > max) ? r.carga_kg : max), null as number | null);
+  }, [historico]);
+  const ultimaCarga = useMemo(() => (historico ?? []).find((r) => r.carga_kg != null)?.carga_kg ?? null, [historico]);
+  const sessoesChart = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of historico ?? []) {
+      if (r.carga_kg == null) continue;
+      const cur = map.get(r.data);
+      if (cur == null || r.carga_kg > cur) map.set(r.data, r.carga_kg);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])).slice(-8).map(([data, carga]) => ({ data: formatDateShort(data), carga }));
+  }, [historico]);
+
+  // Ao trocar de exercício, sugere a carga/reps da última vez (ou do planejado).
+  useEffect(() => {
+    setCargaInput(ultimaCarga != null ? String(ultimaCarga) : "");
+    setRepsInput(primeiroNumero(atual?.repeticoes));
+    setShowHistorico(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercicioId]);
+
   function startRest() {
     const seg = atual?.descanso_seg ?? 60;
     setRestLeft(seg);
@@ -60,6 +103,12 @@ function ExecutarTreino() {
 
   function concluirSerie() {
     if (!atual) return;
+    const cargaKg = cargaInput !== "" ? Number(cargaInput) : null;
+    const reps = repsInput !== "" ? Number(repsInput) : null;
+    registrar.mutate(
+      { treinoId, serieNumero: serie, cargaKg, reps },
+      { onError: () => toast.error("Não deu pra salvar a carga desta série, mas o treino segue normalmente.") },
+    );
     setDone((d) => ({ ...d, [`${atual.id}-${serie}`]: true }));
     if (serie < (atual.series ?? 1)) {
       setSerie(serie + 1);
@@ -162,6 +211,42 @@ function ExecutarTreino() {
             <Metric label="Reps" value={atual?.repeticoes ?? "—"} />
             <Metric label="Carga" value={atual?.carga ?? "—"} />
             <Metric label="Descanso" value={atual?.descanso_seg ? `${atual.descanso_seg}s` : "—"} />
+          </div>
+
+          {/* Registro da série real + progressão */}
+          <div className="rounded-lg border border-primary/30 bg-card/60 p-3 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">O que você fez nesta série</p>
+              {recorde != null ? (
+                <span className="inline-flex items-center gap-1 text-[11px] text-primary font-semibold">
+                  <Trophy className="size-3" /> Recorde: {recorde} kg
+                </span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Carga (kg)</label>
+                <Input type="number" inputMode="decimal" step="0.5" value={cargaInput} onChange={(e) => setCargaInput(e.target.value)} placeholder="Ex: 40" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Reps feitas</label>
+                <Input type="number" inputMode="numeric" value={repsInput} onChange={(e) => setRepsInput(e.target.value)} placeholder="Ex: 10" />
+              </div>
+            </div>
+            {historico && historico.length > 0 ? (
+              <button type="button" onClick={() => setShowHistorico((v) => !v)} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                <History className="size-3.5" /> {showHistorico ? "Esconder histórico" : "Ver progressão deste exercício"}
+              </button>
+            ) : null}
+            {showHistorico && sessoesChart.length > 1 ? (
+              <div className="h-40 w-full">
+                <Suspense fallback={<div className="h-full w-full animate-pulse bg-secondary/40 rounded-lg" />}>
+                  <ProgressaoChart data={sessoesChart} />
+                </Suspense>
+              </div>
+            ) : showHistorico ? (
+              <p className="text-xs text-muted-foreground">Ainda não há sessões suficientes pra mostrar um gráfico — continue registrando.</p>
+            ) : null}
           </div>
 
           {atual?.metodo ? (

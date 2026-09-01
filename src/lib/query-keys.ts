@@ -30,6 +30,7 @@ export const qk = {
     detail: (id: string) => ["treinos", "detail", id] as const,
     exercicios: (treinoId: string) => ["treinos", "exercicios", treinoId] as const,
     exec: (treinoId: string) => ["treinos", "exec", treinoId] as const, // itens c/ mídia p/ execução
+    historico: (alunoId: string, exercicioId: string) => ["treinos", "historico", alunoId, exercicioId] as const,
   },
   alimentos: {
     all: ["alimentos"] as const,

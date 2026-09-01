@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { ImageUp, Loader2, Save, Trash2 } from "lucide-react";
+import { ImageUp, Loader2, Save, Trash2, Copy, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,17 @@ import { useMyProfile, useUpdateMyProfile } from "@/lib/queries/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "") // remove acentos (ex: "João" -> "joao")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
 
 export const Route = createFileRoute("/_authenticated/minha-marca")({
   head: () => ({ meta: [{ title: "Minha Marca — ARIÉS" }] }),
@@ -23,9 +34,20 @@ function MinhaMarca() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [brandName, setBrandName] = useState<string | null>(null);
+  const [slug, setSlug] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
+  const [especialidades, setEspecialidades] = useState<string | null>(null);
+  const [whatsapp, setWhatsapp] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
 
   const logoUrl = profile?.logo_url ?? null;
   const nomeAtual = brandName ?? profile?.brand_name ?? "";
+  const slugAtual = slug ?? profile?.public_slug ?? "";
+  const bioAtual = bio ?? profile?.bio ?? "";
+  const especialidadesAtual = especialidades ?? profile?.especialidades ?? "";
+  const whatsappAtual = whatsapp ?? profile?.contato_whatsapp ?? "";
+  const publicoAtivo = isPublic ?? profile?.is_public ?? false;
+  const linkPublico = slugAtual ? `${typeof window !== "undefined" ? window.location.origin : ""}/p/${slugAtual}` : "";
 
   async function handleLogo(file: File) {
     if (!user) return;
@@ -61,6 +83,28 @@ function MinhaMarca() {
       onSuccess: () => toast.success("Nome de marca salvo"),
       onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao salvar"),
     });
+  }
+
+  function salvarPerfilPublico() {
+    const slugLimpo = slugify(slugAtual);
+    if (publicoAtivo && !slugLimpo) { toast.error("Defina um link antes de ativar o perfil público"); return; }
+    update.mutate(
+      {
+        public_slug: slugLimpo || null,
+        bio: bioAtual.trim() || null,
+        especialidades: especialidadesAtual.trim() || null,
+        contato_whatsapp: whatsappAtual.trim() || null,
+        is_public: publicoAtivo,
+      },
+      {
+        onSuccess: () => { setSlug(slugLimpo); toast.success("Perfil público salvo"); },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Não foi possível salvar — o link pode já estar em uso"),
+      },
+    );
+  }
+
+  function copiarLink() {
+    navigator.clipboard.writeText(linkPublico).then(() => toast.success("Link copiado")).catch(() => toast.error("Não foi possível copiar"));
   }
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Carregando…</div>;
@@ -108,6 +152,55 @@ function MinhaMarca() {
           </div>
           <p className="text-xs text-muted-foreground mt-1">Deixe em branco para usar "{DEFAULT_BRAND}".</p>
         </div>
+      </div>
+
+      <div className="luxury-card p-6 space-y-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="font-display text-lg font-semibold flex items-center gap-2"><Globe className="size-4 text-primary" /> Perfil Público</h2>
+            <p className="text-sm text-muted-foreground mt-1">Uma página sua pra divulgar no Instagram, WhatsApp ou onde quiser.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label htmlFor="is_public" className="text-xs text-muted-foreground">{publicoAtivo ? "Ativo" : "Inativo"}</Label>
+            <Switch id="is_public" checked={publicoAtivo} onCheckedChange={(v) => setIsPublic(v)} />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="slug" className="mb-2 block">Link</Label>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/p/</span>
+            <Input id="slug" value={slugAtual} onChange={(e) => setSlug(e.target.value)} placeholder="seu-nome" className="max-w-[220px]" />
+          </div>
+          {linkPublico && publicoAtivo ? (
+            <button type="button" onClick={copiarLink} className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              <Copy className="size-3" /> {linkPublico}
+            </button>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-1">Só letras minúsculas, números e hífen. Ex: joao-personal</p>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="especialidades" className="mb-2 block">Especialidades</Label>
+          <Input id="especialidades" value={especialidadesAtual} onChange={(e) => setEspecialidades(e.target.value)} placeholder="Hipertrofia, Emagrecimento, Reabilitação" />
+          <p className="text-xs text-muted-foreground mt-1">Separe por vírgula — aparecem como tags no seu perfil.</p>
+        </div>
+
+        <div>
+          <Label htmlFor="bio" className="mb-2 block">Sobre você</Label>
+          <Textarea id="bio" rows={3} value={bioAtual} onChange={(e) => setBio(e.target.value)} placeholder="Personal trainer há 8 anos, especialista em emagrecimento e hipertrofia..." />
+        </div>
+
+        <div>
+          <Label htmlFor="whatsapp" className="mb-2 block">WhatsApp de contato</Label>
+          <Input id="whatsapp" value={whatsappAtual} onChange={(e) => setWhatsapp(e.target.value)} placeholder="5511999999999" />
+          <p className="text-xs text-muted-foreground mt-1">Com DDI e DDD, só números — vira um botão "Falar no WhatsApp" no seu perfil.</p>
+        </div>
+
+        <Button onClick={salvarPerfilPublico} disabled={update.isPending} className="bg-primary text-primary-foreground">
+          {update.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Salvar perfil público
+        </Button>
       </div>
 
       <div>

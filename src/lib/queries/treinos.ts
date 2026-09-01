@@ -436,6 +436,55 @@ export async function fetchTreinosCompletos(alunoId: string): Promise<TreinoComp
   }));
 }
 
+// ─── Progressão de carga (PRs) ───────────────────────────────────────────────
+
+export interface ExecucaoRow {
+  id: string;
+  data: string;
+  serie_numero: number;
+  carga_kg: number | null;
+  reps_realizadas: number | null;
+}
+
+/** Histórico de séries já executadas pelo aluno neste exercício — mais recente primeiro. */
+export function useHistoricoExercicio(alunoId: string, exercicioId: string | undefined) {
+  return useQuery({
+    queryKey: qk.treinos.historico(alunoId, exercicioId ?? ""),
+    enabled: !!alunoId && !!exercicioId,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("treino_execucoes")
+        .select("id, data, serie_numero, carga_kg, reps_realizadas")
+        .eq("aluno_id", alunoId)
+        .eq("exercicio_id", exercicioId)
+        .order("data", { ascending: false })
+        .order("serie_numero", { ascending: true })
+        .limit(60);
+      if (error) throw error;
+      return (data ?? []) as ExecucaoRow[];
+    },
+  });
+}
+
+/** Registra uma série executada (peso/reps reais) — usado no modo de execução guiada. */
+export function useRegistrarSerie(alunoId: string, exercicioId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { treinoId: string; serieNumero: number; cargaKg: number | null; reps: number | null }) => {
+      const { error } = await db.from("treino_execucoes").insert({
+        aluno_id: alunoId,
+        exercicio_id: exercicioId,
+        treino_id: input.treinoId,
+        serie_numero: input.serieNumero,
+        carga_kg: input.cargaKg,
+        reps_realizadas: input.reps,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.treinos.historico(alunoId, exercicioId ?? "") }),
+  });
+}
+
 /** Biblioteca completa de exercícios para o seletor (cacheada por prefixo "exercicios"). */
 export function useExerciciosPicker() {
   return useQuery({

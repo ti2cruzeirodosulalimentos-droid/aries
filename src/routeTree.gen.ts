@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as AuthenticatedPermissoesRouteImport } from './routes/_authenticated/permissoes'
 import { Route as AuthenticatedMinhaMarcaRouteImport } from './routes/_authenticated/minha-marca'
 import { Route as AuthenticatedMinhaAgendaRouteImport } from './routes/_authenticated/minha-agenda'
@@ -54,6 +55,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PSlugRoute = PSlugRouteImport.update({
+  id: '/p/$slug',
+  path: '/p/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPermissoesRoute = AuthenticatedPermissoesRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/minha-agenda': typeof AuthenticatedMinhaAgendaRoute
   '/minha-marca': typeof AuthenticatedMinhaMarcaRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
+  '/p/$slug': typeof PSlugRoute
   '/admin/customizacao': typeof AuthenticatedAdminCustomizacaoRoute
   '/alunos/$id': typeof AuthenticatedAlunosIdRouteWithChildren
   '/alunos/novo': typeof AuthenticatedAlunosNovoRoute
@@ -268,6 +275,7 @@ export interface FileRoutesByTo {
   '/minha-agenda': typeof AuthenticatedMinhaAgendaRoute
   '/minha-marca': typeof AuthenticatedMinhaMarcaRoute
   '/permissoes': typeof AuthenticatedPermissoesRoute
+  '/p/$slug': typeof PSlugRoute
   '/admin/customizacao': typeof AuthenticatedAdminCustomizacaoRoute
   '/alunos/novo': typeof AuthenticatedAlunosNovoRoute
   '/alunos': typeof AuthenticatedAlunosIndexRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/_authenticated/minha-agenda': typeof AuthenticatedMinhaAgendaRoute
   '/_authenticated/minha-marca': typeof AuthenticatedMinhaMarcaRoute
   '/_authenticated/permissoes': typeof AuthenticatedPermissoesRoute
+  '/p/$slug': typeof PSlugRoute
   '/_authenticated/admin/customizacao': typeof AuthenticatedAdminCustomizacaoRoute
   '/_authenticated/alunos/$id': typeof AuthenticatedAlunosIdRouteWithChildren
   '/_authenticated/alunos/novo': typeof AuthenticatedAlunosNovoRoute
@@ -337,6 +346,7 @@ export interface FileRouteTypes {
     | '/minha-agenda'
     | '/minha-marca'
     | '/permissoes'
+    | '/p/$slug'
     | '/admin/customizacao'
     | '/alunos/$id'
     | '/alunos/novo'
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
     | '/minha-agenda'
     | '/minha-marca'
     | '/permissoes'
+    | '/p/$slug'
     | '/admin/customizacao'
     | '/alunos/novo'
     | '/alunos'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/_authenticated/minha-agenda'
     | '/_authenticated/minha-marca'
     | '/_authenticated/permissoes'
+    | '/p/$slug'
     | '/_authenticated/admin/customizacao'
     | '/_authenticated/alunos/$id'
     | '/_authenticated/alunos/novo'
@@ -427,6 +439,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PSlugRoute: typeof PSlugRoute
   ApiPublicHooksLembreteVencimentoRoute: typeof ApiPublicHooksLembreteVencimentoRoute
 }
 
@@ -451,6 +464,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/permissoes': {
@@ -758,6 +778,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PSlugRoute: PSlugRoute,
   ApiPublicHooksLembreteVencimentoRoute: ApiPublicHooksLembreteVencimentoRoute,
 }
 export const routeTree = rootRouteImport

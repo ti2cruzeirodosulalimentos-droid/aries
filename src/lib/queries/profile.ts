@@ -7,9 +7,19 @@ export interface ProfileBranding {
   full_name: string | null;
   logo_url: string | null;
   brand_name: string | null;
+  public_slug: string | null;
+  bio: string | null;
+  especialidades: string | null;
+  contato_whatsapp: string | null;
+  is_public: boolean;
 }
 
-/** Perfil (com marca/logo) do usuário logado. */
+const EMPTY_PROFILE = (id: string): ProfileBranding => ({
+  id, full_name: null, logo_url: null, brand_name: null,
+  public_slug: null, bio: null, especialidades: null, contato_whatsapp: null, is_public: false,
+});
+
+/** Perfil (com marca/logo/perfil público) do usuário logado. */
 export function useMyProfile(userId: string | undefined) {
   return useQuery({
     queryKey: qk.profile.mine(userId),
@@ -17,11 +27,11 @@ export function useMyProfile(userId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, logo_url, brand_name")
+        .select("id, full_name, logo_url, brand_name, public_slug, bio, especialidades, contato_whatsapp, is_public")
         .eq("id", userId!)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? { id: userId!, full_name: null, logo_url: null, brand_name: null }) as ProfileBranding;
+      return (data ?? EMPTY_PROFILE(userId!)) as ProfileBranding;
     },
   });
 }
@@ -43,11 +53,22 @@ export function useProfileBranding(personalId: string | undefined) {
   });
 }
 
-/** Atualiza marca/logo do próprio perfil (upsert — perfil pode não existir ainda). */
+export interface ProfilePatch {
+  logo_url?: string | null;
+  brand_name?: string | null;
+  full_name?: string | null;
+  public_slug?: string | null;
+  bio?: string | null;
+  especialidades?: string | null;
+  contato_whatsapp?: string | null;
+  is_public?: boolean;
+}
+
+/** Atualiza marca/logo/perfil público do próprio perfil (upsert — perfil pode não existir ainda). */
 export function useUpdateMyProfile(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (patch: { logo_url?: string | null; brand_name?: string | null; full_name?: string | null }) => {
+    mutationFn: async (patch: ProfilePatch) => {
       if (!userId) throw new Error("Sessão expirada");
       const { error } = await supabase.from("profiles").upsert({ id: userId, ...patch });
       if (error) throw error;
