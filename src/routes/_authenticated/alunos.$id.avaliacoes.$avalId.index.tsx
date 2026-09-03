@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, FileDown, Loader2, Trash2, Calculator, Pencil, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Share2, Trash2, Calculator, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
 import { requiredDobras, DOBRAS } from "@/components/AvaliacaoForm";
 import { urlToDataUrl, fetchPersonalBranding } from "@/lib/pdf/utils";
+import { entregarPDF } from "@/lib/pdf/share";
 import { ErrorState } from "@/components/ui/error-state";
 import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ function AvaliacaoDetail() {
     });
   }
 
-  async function downloadPDF() {
+  async function gerarPDF(modo: "compartilhar" | "baixar") {
     if (!data) return;
     setGenPdf(true);
     try {
@@ -45,13 +46,15 @@ function AvaliacaoDetail() {
         import("@/lib/pdf/AvaliacaoPDF"),
       ]);
       const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} fotoUrl={fotoUrl} personal={personal} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `avaliacao-${data.aluno.full_name.replace(/\s+/g, "_")}-${data.aval.data_avaliacao}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("PDF gerado");
+      const filename = `avaliacao-${data.aluno.full_name.replace(/\s+/g, "_")}-${data.aval.data_avaliacao}.pdf`;
+      const resultado = await entregarPDF(blob, filename, modo, {
+        title: "Avaliação Física",
+        text: `Avaliação física de ${data.aluno.full_name} — ${formatDate(data.aval.data_avaliacao)}`,
+      });
+      if (resultado === "compartilhado") toast.success("PDF compartilhado");
+      else if (resultado === "baixado") {
+        toast.success(modo === "compartilhar" ? "Seu navegador não permite anexar direto — o PDF foi baixado, é só anexar no WhatsApp." : "PDF gerado");
+      }
     } catch (e: any) {
       toast.error("Erro ao gerar PDF: " + e.message);
     } finally {
@@ -75,8 +78,11 @@ function AvaliacaoDetail() {
               <Pencil className="size-4" /> Editar
             </Button>
           </Link>
-          <Button onClick={downloadPDF} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
-            {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><FileDown className="size-4" /> Baixar PDF</>}
+          <Button onClick={() => gerarPDF("compartilhar")} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
+            {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><Share2 className="size-4" /> Enviar</>}
+          </Button>
+          <Button variant="outline" onClick={() => gerarPDF("baixar")} disabled={genPdf} className="gold-border">
+            <FileDown className="size-4" /> Baixar
           </Button>
           <Button variant="outline" onClick={removerAvaliacao} className="border-destructive/40 text-destructive hover:bg-destructive/10">
             <Trash2 className="size-4" />

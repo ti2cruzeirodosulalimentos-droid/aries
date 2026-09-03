@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
-import { TrendingUp, TrendingDown, Download, FileText } from "lucide-react";
+import { TrendingUp, TrendingDown, Download, FileText, Share2 } from "lucide-react";
 import { useAlunoBasic, useEvolucao, useFotos } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -10,6 +10,7 @@ import { StatsSkeleton } from "@/components/ui/list-skeleton";
 import { toast } from "sonner";
 import { BodyMuscleMap } from "@/components/BodyMuscleMap";
 import { fetchPersonalBranding, urlToDataUrl } from "@/lib/pdf/utils";
+import { entregarPDF } from "@/lib/pdf/share";
 import { supabase } from "@/integrations/supabase/client";
 
 const FOTOS_BUCKET = "evolucao-fotos";
@@ -132,7 +133,7 @@ function EvolucaoPage() {
     };
   }, [data]);
 
-  async function exportPDF(modo: "comparativo" | "completo") {
+  async function exportPDF(modo: "comparativo" | "completo", entrega: "compartilhar" | "baixar") {
     if (!data || data.length === 0) { toast.error("Nenhuma avaliação registrada."); return; }
     if (modo === "comparativo" && data.length < 2) { toast.error("Precisa de pelo menos 2 avaliações pra comparar."); return; }
     setExporting(true);
@@ -196,13 +197,16 @@ function EvolucaoPage() {
           modo={modo}
         />,
       ).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
       const sufixo = modo === "comparativo" ? "Comparativo" : "Completo";
-      a.download = `Evolucao-${sufixo}-${(aluno?.full_name ?? "aluno").replace(/\s+/g, "_")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const filename = `Evolucao-${sufixo}-${(aluno?.full_name ?? "aluno").replace(/\s+/g, "_")}.pdf`;
+      const resultado = await entregarPDF(blob, filename, entrega, {
+        title: modo === "comparativo" ? "Comparativo de Avaliações" : "Relatório de Evolução",
+        text: `Evolução de ${aluno?.full_name ?? "aluno"}`,
+      });
+      if (resultado === "compartilhado") toast.success("PDF compartilhado");
+      else if (resultado === "baixado") {
+        toast.success(entrega === "compartilhar" ? "Seu navegador não permite anexar direto — o PDF foi baixado, é só anexar no WhatsApp." : "PDF gerado");
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -237,13 +241,23 @@ function EvolucaoPage() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Análise</p>
           <h2 className="font-display text-2xl font-semibold">Evolução do Aluno</h2>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => exportPDF("comparativo")} disabled={exporting || (data?.length ?? 0) < 2} className="gold-border">
-            <Download className="size-4" /> Comparativo (últimas 2)
-          </Button>
-          <Button onClick={() => exportPDF("completo")} disabled={exporting}>
-            <Download className="size-4" /> {exporting ? "Gerando..." : "Completo (histórico)"}
-          </Button>
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-1">
+            <Button variant="outline" onClick={() => exportPDF("comparativo", "compartilhar")} disabled={exporting || (data?.length ?? 0) < 2} className="gold-border">
+              <Share2 className="size-4" /> Comparativo (últimas 2)
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => exportPDF("comparativo", "baixar")} disabled={exporting || (data?.length ?? 0) < 2} title="Baixar comparativo" className="gold-border shrink-0">
+              <Download className="size-4" />
+            </Button>
+          </div>
+          <div className="flex gap-1">
+            <Button onClick={() => exportPDF("completo", "compartilhar")} disabled={exporting}>
+              <Share2 className="size-4" /> {exporting ? "Gerando..." : "Completo (histórico)"}
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => exportPDF("completo", "baixar")} disabled={exporting} title="Baixar completo" className="shrink-0">
+              <Download className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

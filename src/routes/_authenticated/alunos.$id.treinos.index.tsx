@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
-import { Plus, Dumbbell, Trash2, Sparkles, X, Check, PlayCircle, Camera, Loader2, FileDown } from "lucide-react";
+import { Plus, Dumbbell, Trash2, Sparkles, X, Check, PlayCircle, Camera, Loader2, FileDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useAluno } from "@/lib/queries/alunos";
@@ -15,6 +15,7 @@ import {
   type FotoTreino,
 } from "@/lib/queries/treinos";
 import { urlToDataUrl, fetchPersonalBranding } from "@/lib/pdf/utils";
+import { entregarPDF } from "@/lib/pdf/share";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ function TreinosList() {
   const { data: treinos, isLoading, isError, refetch } = useTreinosList(id);
   const { data: aluno } = useAluno(id);
 
-  async function downloadPDF() {
+  async function gerarPDF(modo: "compartilhar" | "baixar") {
     if (!aluno) return;
     setGenPdf(true);
     try {
@@ -57,13 +58,15 @@ function TreinosList() {
         import("@/lib/pdf/TreinoPDF"),
       ]);
       const blob = await pdf(<TreinoPDF aluno={aluno} treinos={completos} fotoUrl={fotoUrl} personal={personal} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `treino-${aluno.full_name.replace(/\s+/g, "_")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("PDF gerado");
+      const filename = `treino-${aluno.full_name.replace(/\s+/g, "_")}.pdf`;
+      const resultado = await entregarPDF(blob, filename, modo, {
+        title: "Ficha de Treino",
+        text: `Ficha de treino de ${aluno.full_name}`,
+      });
+      if (resultado === "compartilhado") toast.success("PDF compartilhado");
+      else if (resultado === "baixado") {
+        toast.success(modo === "compartilhar" ? "Seu navegador não permite anexar direto — o PDF foi baixado, é só anexar no WhatsApp." : "PDF gerado");
+      }
     } catch (e: any) {
       toast.error("Erro ao gerar PDF: " + e.message);
     } finally {
@@ -120,9 +123,14 @@ function TreinosList() {
         <div className="flex gap-2 flex-wrap">
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
           {(treinos?.length ?? 0) > 0 ? (
-            <Button onClick={downloadPDF} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
-              {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><FileDown className="size-4" /> Baixar PDF</>}
-            </Button>
+            <>
+              <Button onClick={() => gerarPDF("compartilhar")} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
+                {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><Share2 className="size-4" /> Enviar</>}
+              </Button>
+              <Button variant="outline" onClick={() => gerarPDF("baixar")} disabled={genPdf} className="gold-border">
+                <FileDown className="size-4" /> Baixar
+              </Button>
+            </>
           ) : null}
           <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={ocrLoading} className="gold-border">
             {ocrLoading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />} Importar de foto
