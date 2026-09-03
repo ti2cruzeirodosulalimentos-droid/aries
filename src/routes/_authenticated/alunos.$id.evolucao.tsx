@@ -132,16 +132,22 @@ function EvolucaoPage() {
     };
   }, [data]);
 
-  async function exportPDF() {
+  async function exportPDF(modo: "comparativo" | "completo") {
     if (!data || data.length === 0) { toast.error("Nenhuma avaliação registrada."); return; }
+    if (modo === "comparativo" && data.length < 2) { toast.error("Precisa de pelo menos 2 avaliações pra comparar."); return; }
     setExporting(true);
     try {
-      let chartImage: string | null = null;
-      // tenta capturar gráfico via SVG → PNG
-      const svg = chartRef.current?.querySelector("svg");
-      if (svg) chartImage = await svgToPng(svg as SVGSVGElement, 1200, 480);
+      // Comparativo: só as 2 avaliações mais recentes. Completo: desde a primeira.
+      const base = modo === "comparativo" ? data.slice(-2) : data;
 
-      const registros = (data ?? []).slice().reverse().map((r) => ({
+      let chartImage: string | null = null;
+      // Gráfico só faz sentido no relatório completo — no comparativo (2 pontos) é omitido.
+      if (modo === "completo") {
+        const svg = chartRef.current?.querySelector("svg");
+        if (svg) chartImage = await svgToPng(svg as SVGSVGElement, 1200, 480);
+      }
+
+      const registros = base.slice().reverse().map((r) => ({
         data: r.data_avaliacao,
         peso: numOrNull(r.peso),
         gordura: numOrNull(r.percentual_gordura),
@@ -164,7 +170,7 @@ function EvolucaoPage() {
         circ_panturrilha_d: numOrNull(r.circ_panturrilha_d),
         circ_panturrilha_e: numOrNull(r.circ_panturrilha_e),
       }));
-      const periodo = { de: formatDate(data[0].data_avaliacao), ate: formatDate(data[data.length - 1].data_avaliacao) };
+      const periodo = { de: formatDate(base[0].data_avaliacao), ate: formatDate(base[base.length - 1].data_avaliacao) };
 
       const [personal, fotosPdf, [{ pdf }, { EvolucaoPDF }]] = await Promise.all([
         fetchPersonalBranding((aluno as any)?.personal_id),
@@ -187,12 +193,14 @@ function EvolucaoPage() {
           chartImage={chartImage}
           fotos={fotosPdf}
           personal={personal}
+          modo={modo}
         />,
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Evolucao-${(aluno?.full_name ?? "aluno").replace(/\s+/g, "_")}.pdf`;
+      const sufixo = modo === "comparativo" ? "Comparativo" : "Completo";
+      a.download = `Evolucao-${sufixo}-${(aluno?.full_name ?? "aluno").replace(/\s+/g, "_")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -229,9 +237,14 @@ function EvolucaoPage() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Análise</p>
           <h2 className="font-display text-2xl font-semibold">Evolução do Aluno</h2>
         </div>
-        <Button onClick={exportPDF} disabled={exporting}>
-          <Download className="size-4" /> {exporting ? "Gerando..." : "Exportar PDF"}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => exportPDF("comparativo")} disabled={exporting || (data?.length ?? 0) < 2} className="gold-border">
+            <Download className="size-4" /> Comparativo (últimas 2)
+          </Button>
+          <Button onClick={() => exportPDF("completo")} disabled={exporting}>
+            <Download className="size-4" /> {exporting ? "Gerando..." : "Completo (histórico)"}
+          </Button>
+        </div>
       </div>
 
       {summary && (

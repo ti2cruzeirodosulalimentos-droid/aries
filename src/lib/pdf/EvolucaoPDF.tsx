@@ -90,6 +90,8 @@ export interface EvolucaoPDFProps {
   /** Fotos de evolução (antes/depois) por ângulo — página omitida se vazio. */
   fotos?: FotoComparacao[];
   personal?: PersonalBranding | null;
+  /** "comparativo" = só as 2 avaliações mais recentes (registros já vem cortado); "completo" = histórico inteiro desde a primeira. */
+  modo?: "comparativo" | "completo";
 }
 
 function fmt(v: number | null | undefined, suf = "", digits = 1) {
@@ -210,7 +212,8 @@ function RateCard({ label, rate, suf, good, isLast }: { label: string; rate: num
   );
 }
 
-export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage, fotos, personal }: EvolucaoPDFProps) {
+export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage, fotos, personal, modo = "completo" }: EvolucaoPDFProps) {
+  const comparativo = modo === "comparativo";
   // registros[0] = mais recente, último índice = mais antiga.
   const first = registros[registros.length - 1] ?? null;
   const last = registros[0] ?? null;
@@ -252,8 +255,8 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
       <Page size="A4" style={s.page}>
         <CoverContent
           personal={personal}
-          overline="RELATÓRIO DE EVOLUÇÃO"
-          title="Transformação em Números"
+          overline={comparativo ? "COMPARATIVO DE AVALIAÇÕES" : "RELATÓRIO DE EVOLUÇÃO"}
+          title={comparativo ? "Últimas Duas Avaliações" : "Transformação em Números"}
           personName={alunoNome}
           personMeta={`Período de ${periodo.de} a ${periodo.ate}`}
           personPhotoUrl={fotoUrl}
@@ -263,7 +266,7 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
       {/* RESUMO, VARIAÇÃO TOTAL E RITMO */}
       <Page size="A4" style={s.page}>
         <PageHeader fotoUrl={fotoUrl} />
-        <Text style={s.title}>Relatório de Evolução</Text>
+        <Text style={s.title}>{comparativo ? "Comparativo de Avaliações" : "Relatório de Evolução"}</Text>
         <Text style={s.alunoLine}>{alunoNome} · Período {periodo.de} a {periodo.ate} · {registros.length} avaliações</Text>
         {resumo ? <Text style={s.resumoText}>{resumo}</Text> : null}
 
@@ -355,7 +358,7 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
           </>
         ) : null}
 
-        <Text style={s.sectionTitle}>HISTÓRICO COMPLETO</Text>
+        <Text style={s.sectionTitle}>{comparativo ? "AVALIAÇÕES COMPARADAS" : "HISTÓRICO COMPLETO"}</Text>
         <View style={s.card}>
           <View style={s.row}>
             <Text style={[s.th, { flex: 1.2 }]}>Data</Text>
