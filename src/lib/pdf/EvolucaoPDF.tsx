@@ -1,42 +1,48 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
+import { CoverContent, pdfPalette, type PersonalBranding, type PdfTema } from "@/lib/pdf/Cover";
 
-const colors = {
-  bg: "#0A0A0A", card: "#161616", gold: "#D4AF37", goldLight: "#F5D76E", text: "#FFFFFF",
-  muted: "#9A9A9A", border: "#2A2417", good: "#34D399", bad: "#F87171",
-};
+function buildPalette(tema: PdfTema) {
+  const base = pdfPalette(tema);
+  // good/bad (setas de variação) não fazem parte da paleta compartilhada da capa —
+  // no tema claro precisam ser bem mais escuros pra continuar legíveis no papel branco.
+  return tema === "claro"
+    ? { ...base, good: "#15803D", bad: "#B91C1C" }
+    : { ...base, good: "#34D399", bad: "#F87171" };
+}
 
-const s = StyleSheet.create({
-  page: { backgroundColor: colors.bg, color: colors.text, padding: 36, fontSize: 10, fontFamily: "Helvetica" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottom: `0.5pt solid ${colors.border}`, paddingBottom: 8, marginBottom: 16 },
-  brand: { color: colors.gold, fontSize: 12, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
-  sub: { color: colors.muted, fontSize: 8 },
-  title: { fontSize: 22, color: colors.gold, fontFamily: "Helvetica-Bold", marginTop: 6 },
-  alunoLine: { color: colors.muted, fontSize: 10, marginBottom: 16 },
-  sectionTitle: { fontSize: 13, color: colors.gold, fontFamily: "Helvetica-Bold", marginBottom: 8, marginTop: 14, letterSpacing: 1.5 },
-  sectionHint: { color: colors.muted, fontSize: 8, marginTop: -6, marginBottom: 10 },
-  card: { backgroundColor: colors.card, borderRadius: 6, padding: 12, marginBottom: 8, border: `0.5pt solid ${colors.border}` },
-  row: { flexDirection: "row" },
-  statBox: { flex: 1, padding: 10, alignItems: "center", borderRight: `0.5pt solid ${colors.border}` },
-  statLabel: { color: colors.gold, fontSize: 7, letterSpacing: 1.5, marginBottom: 4, textAlign: "center" },
-  statValue: { fontSize: 16, color: colors.text, fontFamily: "Helvetica-Bold" },
-  delta: { fontSize: 8, marginTop: 4 },
-  th: { color: colors.gold, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 1, textTransform: "uppercase", paddingVertical: 4 },
-  td: { color: colors.text, fontSize: 9, paddingVertical: 4, borderTop: `0.5pt solid ${colors.border}` },
-  tdMuted: { color: colors.muted, fontSize: 9, paddingVertical: 4, borderTop: `0.5pt solid ${colors.border}` },
-  chartImg: { width: "100%", height: 220, marginBottom: 10 },
-  footer: { position: "absolute", bottom: 20, left: 36, right: 36, borderTop: `0.5pt solid ${colors.border}`, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
-  footerText: { color: colors.muted, fontSize: 7 },
-  emptyNote: { color: colors.muted, fontSize: 9 },
-  resumoText: { color: colors.text, fontSize: 10, lineHeight: 1.5, marginBottom: 4 },
-  fotoBlock: { marginBottom: 12 },
-  fotoCompareRow: { flexDirection: "row", gap: 10 },
-  fotoCol: { flex: 1, alignItems: "center" },
-  fotoTag: { color: colors.gold, fontSize: 7, fontFamily: "Helvetica-Bold", letterSpacing: 1.5, marginBottom: 4, textTransform: "uppercase" },
-  fotoImg: { width: "100%", height: 130, objectFit: "cover", borderRadius: 6, border: `0.5pt solid ${colors.border}` },
-  fotoPlaceholder: { width: "100%", height: 130, borderRadius: 6, border: `0.5pt dashed ${colors.border}`, alignItems: "center", justifyContent: "center" },
-  fotoDate: { color: colors.muted, fontSize: 7, marginTop: 4 },
-});
+function buildStyles(colors: ReturnType<typeof buildPalette>) {
+  return StyleSheet.create({
+    page: { backgroundColor: colors.bg, color: colors.text, padding: 36, fontSize: 10, fontFamily: "Helvetica" },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottom: `0.5pt solid ${colors.border}`, paddingBottom: 8, marginBottom: 16 },
+    brand: { color: colors.gold, fontSize: 12, letterSpacing: 4, fontFamily: "Helvetica-Bold" },
+    sub: { color: colors.muted, fontSize: 8 },
+    title: { fontSize: 22, color: colors.gold, fontFamily: "Helvetica-Bold", marginTop: 6 },
+    alunoLine: { color: colors.muted, fontSize: 10, marginBottom: 16 },
+    sectionTitle: { fontSize: 13, color: colors.gold, fontFamily: "Helvetica-Bold", marginBottom: 8, marginTop: 14, letterSpacing: 1.5 },
+    sectionHint: { color: colors.muted, fontSize: 8, marginTop: -6, marginBottom: 10 },
+    card: { backgroundColor: colors.card, borderRadius: 6, padding: 12, marginBottom: 8, border: `0.5pt solid ${colors.border}` },
+    row: { flexDirection: "row" },
+    statBox: { flex: 1, padding: 10, alignItems: "center", borderRight: `0.5pt solid ${colors.border}` },
+    statLabel: { color: colors.gold, fontSize: 7, letterSpacing: 1.5, marginBottom: 4, textAlign: "center" },
+    statValue: { fontSize: 16, color: colors.text, fontFamily: "Helvetica-Bold" },
+    delta: { fontSize: 8, marginTop: 4 },
+    th: { color: colors.gold, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 1, textTransform: "uppercase", paddingVertical: 4 },
+    td: { color: colors.text, fontSize: 9, paddingVertical: 4, borderTop: `0.5pt solid ${colors.border}` },
+    tdMuted: { color: colors.muted, fontSize: 9, paddingVertical: 4, borderTop: `0.5pt solid ${colors.border}` },
+    chartImg: { width: "100%", height: 220, marginBottom: 10 },
+    footer: { position: "absolute", bottom: 20, left: 36, right: 36, borderTop: `0.5pt solid ${colors.border}`, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { color: colors.muted, fontSize: 7 },
+    emptyNote: { color: colors.muted, fontSize: 9 },
+    resumoText: { color: colors.text, fontSize: 10, lineHeight: 1.5, marginBottom: 4 },
+    fotoBlock: { marginBottom: 12 },
+    fotoCompareRow: { flexDirection: "row", gap: 10 },
+    fotoCol: { flex: 1, alignItems: "center" },
+    fotoTag: { color: colors.gold, fontSize: 7, fontFamily: "Helvetica-Bold", letterSpacing: 1.5, marginBottom: 4, textTransform: "uppercase" },
+    fotoImg: { width: "100%", height: 130, objectFit: "cover", borderRadius: 6, border: `0.5pt solid ${colors.border}` },
+    fotoPlaceholder: { width: "100%", height: 130, borderRadius: 6, border: `0.5pt dashed ${colors.border}`, alignItems: "center", justifyContent: "center" },
+    fotoDate: { color: colors.muted, fontSize: 7, marginTop: 4 },
+  });
+}
 
 // Cada tupla é [sufixo da chave circ_<sufixo>, rótulo exibido].
 const CIRC_ROWS: Array<[string, string]> = [
@@ -92,6 +98,8 @@ export interface EvolucaoPDFProps {
   personal?: PersonalBranding | null;
   /** "comparativo" = só as 2 avaliações mais recentes (registros já vem cortado); "completo" = histórico inteiro desde a primeira. */
   modo?: "comparativo" | "completo";
+  /** "claro" = versão pra impressão em P&B (fundo branco, pouca tinta). Padrão "escuro". */
+  tema?: PdfTema;
 }
 
 function fmt(v: number | null | undefined, suf = "", digits = 1) {
@@ -134,86 +142,93 @@ function gerarResumo(
   return `Ao longo de ${fmtPeriodo(periodoDias)} (${periodo.de} a ${periodo.ate}), ${frase}.`;
 }
 
-function FotoCompareBlock({ label, antes, depois }: { label: string; antes: FotoComparacao["antes"]; depois: FotoComparacao["depois"] }) {
-  return (
-    <View style={s.fotoBlock}>
-      <Text style={[s.sectionTitle, { marginTop: 0, marginBottom: 6, fontSize: 11 }]}>{label.toUpperCase()}</Text>
-      <View style={s.fotoCompareRow}>
-        <View style={s.fotoCol}>
-          <Text style={s.fotoTag}>Antes</Text>
-          {antes ? <Image src={antes.url} style={s.fotoImg} /> : <View style={s.fotoPlaceholder}><Text style={{ color: colors.muted, fontSize: 8 }}>Sem foto</Text></View>}
-          <Text style={s.fotoDate}>{antes ? fmtDate(antes.data) : "—"}</Text>
-        </View>
-        <View style={s.fotoCol}>
-          <Text style={s.fotoTag}>Depois</Text>
-          {depois ? <Image src={depois.url} style={s.fotoImg} /> : <View style={s.fotoPlaceholder}><Text style={{ color: colors.muted, fontSize: 8 }}>Sem foto</Text></View>}
-          <Text style={s.fotoDate}>{depois ? fmtDate(depois.data) : "—"}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function PageFooter({ aluno }: { aluno: string }) {
-  return (
-    <View style={s.footer} fixed>
-      <Text style={s.footerText}>{aluno}</Text>
-      <Text style={s.footerText}>ARIÉS · Transformando metas em resultados</Text>
-      <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
-    </View>
-  );
-}
-
-function PageHeader({ fotoUrl }: { fotoUrl?: string | null }) {
-  return (
-    <View style={s.header}>
-      <View>
-        <Text style={s.brand}>ARIÉS</Text>
-        <Text style={s.sub}>Transformando metas em resultados</Text>
-      </View>
-      {fotoUrl ? <Image src={fotoUrl} style={{ width: 50, height: 50, borderRadius: 25, border: `1pt solid ${colors.gold}` }} /> : null}
-    </View>
-  );
-}
-
-function SummaryBox({ label, value, isLast }: { label: string; value: string; isLast?: boolean }) {
-  return (
-    <View style={[s.statBox, isLast ? { borderRight: 0 } : null]}>
-      <Text style={s.statLabel}>{label}</Text>
-      <Text style={s.statValue}>{value}</Text>
-    </View>
-  );
-}
-
-function StatBox({ label, curr, d, suf, digits, isLast }: {
-  label: string; curr: number | null | undefined; d: ReturnType<typeof delta>; suf: string; digits: number; isLast?: boolean;
-}) {
-  return (
-    <View style={[s.statBox, isLast ? { borderRight: 0 } : null]}>
-      <Text style={s.statLabel}>{label}</Text>
-      <Text style={s.statValue}>{fmt(curr, suf, digits)}</Text>
-      {d && (
-        <Text style={[s.delta, { color: d.good ? colors.good : colors.bad }]}>
-          {d.d > 0 ? "+" : "-"}{Math.abs(d.d).toFixed(digits)}{suf}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-function RateCard({ label, rate, suf, good, isLast }: { label: string; rate: number | null; suf: string; good: boolean | null; isLast?: boolean }) {
-  return (
-    <View style={[s.card, { flex: 1, alignItems: "center", paddingVertical: 14, marginBottom: 0 }, isLast ? {} : { marginRight: 10 }]}>
-      <Text style={s.statLabel}>{label.toUpperCase()}</Text>
-      <Text style={[s.statValue, { color: good == null ? colors.text : good ? colors.good : colors.bad }]}>
-        {rate != null ? `${rate > 0 ? "+" : ""}${rate.toFixed(2)}${suf}` : "—"}
-      </Text>
-    </View>
-  );
-}
-
-export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage, fotos, personal, modo = "completo" }: EvolucaoPDFProps) {
+export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage, fotos, personal, modo = "completo", tema = "escuro" }: EvolucaoPDFProps) {
+  const colors = buildPalette(tema);
+  const s = buildStyles(colors);
   const comparativo = modo === "comparativo";
+  // Gráfico é gerado com fundo escuro fixo (ver svgToPng na rota) — não faz
+  // sentido incluir no tema claro, ficaria um retângulo escuro solto na página.
+  const mostrarGrafico = !!chartImage && tema !== "claro";
+
+  // Helpers definidos aqui dentro pra fechar sobre `colors`/`s` do tema atual.
+  function FotoCompareBlock({ label, antes, depois }: { label: string; antes: FotoComparacao["antes"]; depois: FotoComparacao["depois"] }) {
+    return (
+      <View style={s.fotoBlock}>
+        <Text style={[s.sectionTitle, { marginTop: 0, marginBottom: 6, fontSize: 11 }]}>{label.toUpperCase()}</Text>
+        <View style={s.fotoCompareRow}>
+          <View style={s.fotoCol}>
+            <Text style={s.fotoTag}>Antes</Text>
+            {antes ? <Image src={antes.url} style={s.fotoImg} /> : <View style={s.fotoPlaceholder}><Text style={{ color: colors.muted, fontSize: 8 }}>Sem foto</Text></View>}
+            <Text style={s.fotoDate}>{antes ? fmtDate(antes.data) : "—"}</Text>
+          </View>
+          <View style={s.fotoCol}>
+            <Text style={s.fotoTag}>Depois</Text>
+            {depois ? <Image src={depois.url} style={s.fotoImg} /> : <View style={s.fotoPlaceholder}><Text style={{ color: colors.muted, fontSize: 8 }}>Sem foto</Text></View>}
+            <Text style={s.fotoDate}>{depois ? fmtDate(depois.data) : "—"}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  function PageFooter({ aluno }: { aluno: string }) {
+    return (
+      <View style={s.footer} fixed>
+        <Text style={s.footerText}>{aluno}</Text>
+        <Text style={s.footerText}>ARIÉS · Transformando metas em resultados</Text>
+        <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+      </View>
+    );
+  }
+
+  function PageHeader({ fotoUrl }: { fotoUrl?: string | null }) {
+    return (
+      <View style={s.header}>
+        <View>
+          <Text style={s.brand}>ARIÉS</Text>
+          <Text style={s.sub}>Transformando metas em resultados</Text>
+        </View>
+        {fotoUrl ? <Image src={fotoUrl} style={{ width: 50, height: 50, borderRadius: 25, border: `1pt solid ${colors.gold}` }} /> : null}
+      </View>
+    );
+  }
+
+  function SummaryBox({ label, value, isLast }: { label: string; value: string; isLast?: boolean }) {
+    return (
+      <View style={[s.statBox, isLast ? { borderRight: 0 } : null]}>
+        <Text style={s.statLabel}>{label}</Text>
+        <Text style={s.statValue}>{value}</Text>
+      </View>
+    );
+  }
+
+  function StatBox({ label, curr, d, suf, digits, isLast }: {
+    label: string; curr: number | null | undefined; d: ReturnType<typeof delta>; suf: string; digits: number; isLast?: boolean;
+  }) {
+    return (
+      <View style={[s.statBox, isLast ? { borderRight: 0 } : null]}>
+        <Text style={s.statLabel}>{label}</Text>
+        <Text style={s.statValue}>{fmt(curr, suf, digits)}</Text>
+        {d && (
+          <Text style={[s.delta, { color: d.good ? colors.good : colors.bad }]}>
+            {d.d > 0 ? "+" : "-"}{Math.abs(d.d).toFixed(digits)}{suf}
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  function RateCard({ label, rate, suf, good, isLast }: { label: string; rate: number | null; suf: string; good: boolean | null; isLast?: boolean }) {
+    return (
+      <View style={[s.card, { flex: 1, alignItems: "center", paddingVertical: 14, marginBottom: 0 }, isLast ? {} : { marginRight: 10 }]}>
+        <Text style={s.statLabel}>{label.toUpperCase()}</Text>
+        <Text style={[s.statValue, { color: good == null ? colors.text : good ? colors.good : colors.bad }]}>
+          {rate != null ? `${rate > 0 ? "+" : ""}${rate.toFixed(2)}${suf}` : "—"}
+        </Text>
+      </View>
+    );
+  }
+
   // registros[0] = mais recente, último índice = mais antiga.
   const first = registros[registros.length - 1] ?? null;
   const last = registros[0] ?? null;
@@ -260,6 +275,7 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
           personName={alunoNome}
           personMeta={`Período de ${periodo.de} a ${periodo.ate}`}
           personPhotoUrl={fotoUrl}
+          tema={tema}
         />
       </Page>
 
@@ -351,10 +367,10 @@ export function EvolucaoPDF({ alunoNome, fotoUrl, periodo, registros, chartImage
       <Page size="A4" style={s.page}>
         <PageHeader fotoUrl={fotoUrl} />
 
-        {chartImage ? (
+        {mostrarGrafico ? (
           <>
             <Text style={s.sectionTitle}>GRÁFICO DE EVOLUÇÃO</Text>
-            <Image src={chartImage} style={s.chartImg} />
+            <Image src={chartImage!} style={s.chartImg} />
           </>
         ) : null}
 

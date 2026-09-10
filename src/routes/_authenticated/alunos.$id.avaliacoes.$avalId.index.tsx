@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, FileDown, Loader2, Share2, Trash2, Calculator, Pencil, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Share2, Trash2, Calculator, Pencil, AlertTriangle, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
 import { requiredDobras, DOBRAS } from "@/components/AvaliacaoForm";
@@ -9,6 +9,7 @@ import { entregarPDF } from "@/lib/pdf/share";
 import { ErrorState } from "@/components/ui/error-state";
 import { DetailSkeleton } from "@/components/ui/list-skeleton";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/_authenticated/alunos/$id/avaliacoes/$avalId/")({
   component: AvaliacaoDetail,
@@ -18,6 +19,7 @@ function AvaliacaoDetail() {
   const { id: aluno_id, avalId } = Route.useParams();
   const navigate = useNavigate();
   const [genPdf, setGenPdf] = useState(false);
+  const [impressao, setImpressao] = useState(false);
 
   const { data, isLoading, isError, refetch } = useAvaliacaoDetail(aluno_id, avalId);
 
@@ -45,7 +47,7 @@ function AvaliacaoDetail() {
         import("@react-pdf/renderer"),
         import("@/lib/pdf/AvaliacaoPDF"),
       ]);
-      const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} fotoUrl={fotoUrl} personal={personal} />).toBlob();
+      const blob = await pdf(<AvaliacaoPDF aluno={data.aluno} avaliacao={data.aval} fotoUrl={fotoUrl} personal={personal} tema={impressao ? "claro" : "escuro"} />).toBlob();
       const filename = `avaliacao-${data.aluno.full_name.replace(/\s+/g, "_")}-${data.aval.data_avaliacao}.pdf`;
       const resultado = await entregarPDF(blob, filename, modo, {
         title: "Avaliação Física",
@@ -72,21 +74,27 @@ function AvaliacaoDetail() {
         <Link to="/alunos/$id/avaliacoes" params={{ id: aluno_id }} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
           <ArrowLeft className="size-4" /> Histórico
         </Link>
-        <div className="flex gap-2">
-          <Link to="/alunos/$id/avaliacoes/$avalId/editar" params={{ id: aluno_id, avalId }}>
-            <Button variant="outline">
-              <Pencil className="size-4" /> Editar
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <Link to="/alunos/$id/avaliacoes/$avalId/editar" params={{ id: aluno_id, avalId }}>
+              <Button variant="outline">
+                <Pencil className="size-4" /> Editar
+              </Button>
+            </Link>
+            <Button onClick={() => gerarPDF("compartilhar")} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
+              {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><Share2 className="size-4" /> Enviar</>}
             </Button>
-          </Link>
-          <Button onClick={() => gerarPDF("compartilhar")} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
-            {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><Share2 className="size-4" /> Enviar</>}
-          </Button>
-          <Button variant="outline" onClick={() => gerarPDF("baixar")} disabled={genPdf} className="gold-border">
-            <FileDown className="size-4" /> Baixar
-          </Button>
-          <Button variant="outline" onClick={removerAvaliacao} className="border-destructive/40 text-destructive hover:bg-destructive/10">
-            <Trash2 className="size-4" />
-          </Button>
+            <Button variant="outline" onClick={() => gerarPDF("baixar")} disabled={genPdf} className="gold-border">
+              <FileDown className="size-4" /> Baixar
+            </Button>
+            <Button variant="outline" onClick={removerAvaliacao} className="border-destructive/40 text-destructive hover:bg-destructive/10">
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <Checkbox checked={impressao} onCheckedChange={(v) => setImpressao(!!v)} />
+            <Printer className="size-3.5" /> Versão impressão (P&B, economiza tinta)
+          </label>
         </div>
       </div>
 

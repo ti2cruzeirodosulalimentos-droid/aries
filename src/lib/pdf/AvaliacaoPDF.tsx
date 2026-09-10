@@ -1,56 +1,48 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { Database } from "@/integrations/supabase/types";
-import { CoverContent, type PersonalBranding } from "@/lib/pdf/Cover";
+import { CoverContent, pdfPalette, type PersonalBranding, type PdfTema } from "@/lib/pdf/Cover";
 
 type Avaliacao = Database["public"]["Tables"]["avaliacoes_fisicas"]["Row"];
 type Aluno = Database["public"]["Tables"]["alunos"]["Row"];
 
-const colors = {
-  bg: "#0A0A0A",
-  card: "#161616",
-  gold: "#D4AF37",
-  goldLight: "#F5D76E",
-  text: "#FFFFFF",
-  muted: "#9A9A9A",
-  border: "#2A2417",
-};
-
-const s = StyleSheet.create({
-  page: { backgroundColor: colors.bg, color: colors.text, padding: 36, fontSize: 10, fontFamily: "Helvetica" },
-  // Páginas
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottom: `0.5pt solid ${colors.border}`, paddingBottom: 8, marginBottom: 16 },
-  headerBrand: { color: colors.gold, fontSize: 9, letterSpacing: 3, fontFamily: "Helvetica-Bold" },
-  headerMeta: { color: colors.muted, fontSize: 8 },
-  sectionTitle: { fontSize: 13, color: colors.gold, fontFamily: "Helvetica-Bold", marginBottom: 10, marginTop: 12, letterSpacing: 1.5 },
-  card: { backgroundColor: colors.card, borderRadius: 6, padding: 12, marginBottom: 8, border: `0.5pt solid ${colors.border}` },
-  row: { flexDirection: "row", flexWrap: "wrap" },
-  cell: { width: "50%", marginBottom: 6, paddingRight: 6 },
-  cell3: { width: "33.33%", marginBottom: 6, paddingRight: 6 },
-  cell4: { width: "25%", marginBottom: 6, paddingRight: 6 },
-  label: { color: colors.muted, fontSize: 7, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 },
-  value: { color: colors.text, fontSize: 10, fontFamily: "Helvetica-Bold" },
-  bigStat: { backgroundColor: colors.card, padding: 14, borderRadius: 8, alignItems: "center", border: `1pt solid ${colors.gold}` },
-  bigStatLabel: { color: colors.gold, fontSize: 8, letterSpacing: 2, marginBottom: 6 },
-  bigStatValue: { color: colors.text, fontSize: 22, fontFamily: "Helvetica-Bold" },
-  bigStatHint: { color: colors.muted, fontSize: 8, marginTop: 4 },
-  pageFooter: { position: "absolute", bottom: 20, left: 36, right: 36, borderTop: `0.5pt solid ${colors.border}`, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
-  footerText: { color: colors.muted, fontSize: 7 },
-  refCard: { borderRadius: 6, border: `0.5pt solid ${colors.border}`, overflow: "hidden" },
-  refRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 10, borderBottom: `0.5pt solid ${colors.border}` },
-  refRowActive: { backgroundColor: colors.gold },
-  refLabel: { color: colors.text, fontSize: 9 },
-  refLabelActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
-  refValue: { color: colors.muted, fontSize: 9 },
-  refValueActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
-  acsmRow: { flexDirection: "row", borderBottom: `0.5pt solid ${colors.border}`, alignItems: "center" },
-  acsmLabelCell: { flex: 1.3, fontSize: 8, color: colors.text, paddingVertical: 6, paddingLeft: 8 },
-  refLabelActiveInline: { color: colors.gold, fontFamily: "Helvetica-Bold" },
-  acsmHeadText: { color: colors.gold, fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
-  acsmCell: { flex: 1, textAlign: "center", fontSize: 8, color: colors.muted, paddingVertical: 6 },
-  acsmColActive: { color: "#000000", backgroundColor: colors.gold },
-  acsmCellActive: { color: "#000000", backgroundColor: colors.gold, fontFamily: "Helvetica-Bold" },
-  acsmSource: { color: colors.muted, fontSize: 6, textAlign: "right", paddingVertical: 4, paddingRight: 8, fontStyle: "italic" },
-});
+function buildStyles(colors: ReturnType<typeof pdfPalette>) {
+  return StyleSheet.create({
+    page: { backgroundColor: colors.bg, color: colors.text, padding: 36, fontSize: 10, fontFamily: "Helvetica" },
+    // Páginas
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottom: `0.5pt solid ${colors.border}`, paddingBottom: 8, marginBottom: 16 },
+    headerBrand: { color: colors.gold, fontSize: 9, letterSpacing: 3, fontFamily: "Helvetica-Bold" },
+    headerMeta: { color: colors.muted, fontSize: 8 },
+    sectionTitle: { fontSize: 13, color: colors.gold, fontFamily: "Helvetica-Bold", marginBottom: 10, marginTop: 12, letterSpacing: 1.5 },
+    card: { backgroundColor: colors.card, borderRadius: 6, padding: 12, marginBottom: 8, border: `0.5pt solid ${colors.border}` },
+    row: { flexDirection: "row", flexWrap: "wrap" },
+    cell: { width: "50%", marginBottom: 6, paddingRight: 6 },
+    cell3: { width: "33.33%", marginBottom: 6, paddingRight: 6 },
+    cell4: { width: "25%", marginBottom: 6, paddingRight: 6 },
+    label: { color: colors.muted, fontSize: 7, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 },
+    value: { color: colors.text, fontSize: 10, fontFamily: "Helvetica-Bold" },
+    bigStat: { backgroundColor: colors.card, padding: 14, borderRadius: 8, alignItems: "center", border: `1pt solid ${colors.gold}` },
+    bigStatLabel: { color: colors.gold, fontSize: 8, letterSpacing: 2, marginBottom: 6 },
+    bigStatValue: { color: colors.text, fontSize: 22, fontFamily: "Helvetica-Bold" },
+    bigStatHint: { color: colors.muted, fontSize: 8, marginTop: 4 },
+    pageFooter: { position: "absolute", bottom: 20, left: 36, right: 36, borderTop: `0.5pt solid ${colors.border}`, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { color: colors.muted, fontSize: 7 },
+    refCard: { borderRadius: 6, border: `0.5pt solid ${colors.border}`, overflow: "hidden" },
+    refRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 10, borderBottom: `0.5pt solid ${colors.border}` },
+    refRowActive: { backgroundColor: colors.gold },
+    refLabel: { color: colors.text, fontSize: 9 },
+    refLabelActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
+    refValue: { color: colors.muted, fontSize: 9 },
+    refValueActive: { color: "#000000", fontSize: 9, fontFamily: "Helvetica-Bold" },
+    acsmRow: { flexDirection: "row", borderBottom: `0.5pt solid ${colors.border}`, alignItems: "center" },
+    acsmLabelCell: { flex: 1.3, fontSize: 8, color: colors.text, paddingVertical: 6, paddingLeft: 8 },
+    refLabelActiveInline: { color: colors.gold, fontFamily: "Helvetica-Bold" },
+    acsmHeadText: { color: colors.gold, fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
+    acsmCell: { flex: 1, textAlign: "center", fontSize: 8, color: colors.muted, paddingVertical: 6 },
+    acsmColActive: { color: "#000000", backgroundColor: colors.gold },
+    acsmCellActive: { color: "#000000", backgroundColor: colors.gold, fontFamily: "Helvetica-Bold" },
+    acsmSource: { color: colors.muted, fontSize: 6, textAlign: "right", paddingVertical: 4, paddingRight: 8, fontStyle: "italic" },
+  });
+}
 
 const IMC_TABLE: Array<[string, string]> = [
   ["Abaixo do peso", "< 18.5"],
@@ -60,22 +52,6 @@ const IMC_TABLE: Array<[string, string]> = [
   ["Obesidade grau II", "35.0 – 39.9"],
   ["Obesidade grau III", "≥ 40.0"],
 ];
-
-function RefTable({ rows, current }: { rows: Array<[string, string]>; current: string | null }) {
-  return (
-    <View style={s.refCard}>
-      {rows.map(([label, value], i) => {
-        const active = label === current;
-        return (
-          <View key={label} style={[s.refRow, active ? s.refRowActive : null, i === rows.length - 1 ? { borderBottom: 0 } : null]}>
-            <Text style={active ? s.refLabelActive : s.refLabel}>{label}</Text>
-            <Text style={active ? s.refValueActive : s.refValue}>{value}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
 
 // Tabela de % de gordura ideal por idade/sexo — ACSM (Lea & Febiger, 1986),
 // referência clássica de fisiologia do exercício. Substitui a faixa fixa
@@ -92,33 +68,6 @@ function acsmFaixaIndex(idade: number | null): number | null {
   if (idade == null || isNaN(idade)) return null;
   const idx = ACSM_GORDURA_IDEAL.findIndex((f) => idade >= f.min && (f.max === null || idade <= f.max));
   return idx === -1 ? (idade < 18 ? 0 : ACSM_GORDURA_IDEAL.length - 1) : idx;
-}
-
-function AcsmTable({ idade, feminino }: { idade: number | null; feminino: boolean }) {
-  const idx = acsmFaixaIndex(idade);
-  return (
-    <View style={s.refCard}>
-      <View style={[s.acsmRow, { backgroundColor: colors.card }]}>
-        <Text style={[s.acsmLabelCell, s.acsmHeadText]}>Idade</Text>
-        {ACSM_GORDURA_IDEAL.map((f, i) => (
-          <Text key={f.faixa} style={[s.acsmCell, s.acsmHeadText, i === idx ? s.acsmColActive : null]}>{f.faixa}</Text>
-        ))}
-      </View>
-      <View style={s.acsmRow}>
-        <Text style={[s.acsmLabelCell, !feminino ? s.refLabelActiveInline : null]}>Homens</Text>
-        {ACSM_GORDURA_IDEAL.map((f, i) => (
-          <Text key={f.faixa} style={[s.acsmCell, !feminino && i === idx ? s.acsmCellActive : null]}>{f.homens}%</Text>
-        ))}
-      </View>
-      <View style={[s.acsmRow, { borderBottom: 0 }]}>
-        <Text style={[s.acsmLabelCell, feminino ? s.refLabelActiveInline : null]}>Mulheres</Text>
-        {ACSM_GORDURA_IDEAL.map((f, i) => (
-          <Text key={f.faixa} style={[s.acsmCell, feminino && i === idx ? s.acsmCellActive : null]}>{f.mulheres}%</Text>
-        ))}
-      </View>
-      <Text style={s.acsmSource}>Fonte: ACSM — Lea & Febiger, 1986</Text>
-    </View>
-  );
 }
 
 function fmt(v: number | null | undefined, suffix = "", digits = 2) {
@@ -143,25 +92,11 @@ function calcAge(birth: string | null | undefined): string {
   if (md < 0 || (md === 0 && t.getDate() < b.getDate())) a--;
   return `${a} anos`;
 }
-
-function PageFooter({ page, total, aluno }: { page: number; total: number; aluno: string }) {
-  return (
-    <View style={s.pageFooter} fixed>
-      <Text style={s.footerText}>{aluno}</Text>
-      <Text style={s.footerText}>ARIÉS</Text>
-      <Text style={s.footerText}>Página {page} de {total}</Text>
-    </View>
-  );
-}
-
-function Field({ label, value, width }: { label: string; value: string; width?: "cell" | "cell3" | "cell4" }) {
-  const w = width === "cell3" ? s.cell3 : width === "cell4" ? s.cell4 : s.cell;
-  return (
-    <View style={w}>
-      <Text style={s.label}>{label}</Text>
-      <Text style={s.value}>{value || "—"}</Text>
-    </View>
-  );
+function protocoloLabel(p: string | null) {
+  if (p === "jp3") return "Jackson & Pollock (3 dobras)";
+  if (p === "jp7") return "Jackson & Pollock (7 dobras)";
+  if (p === "obesos") return "Protocolo Obesos (Weltman)";
+  return "—";
 }
 
 export interface AvaliacaoPDFProps {
@@ -169,9 +104,13 @@ export interface AvaliacaoPDFProps {
   avaliacao: Avaliacao;
   fotoUrl?: string | null;
   personal?: PersonalBranding | null;
+  /** "claro" = versão pra impressão em P&B (fundo branco, pouca tinta). Padrão "escuro". */
+  tema?: PdfTema;
 }
 
-export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal }: AvaliacaoPDFProps) {
+export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal, tema = "escuro" }: AvaliacaoPDFProps) {
+  const colors = pdfPalette(tema);
+  const s = buildStyles(colors);
   const total = 4;
 
   const isFeminino = a.genero === "feminino";
@@ -194,6 +133,70 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal }: Avaliac
   const diffPeso = pesoAtualNum != null && pesoIdealAcsm != null ? pesoAtualNum - pesoIdealAcsm : null;
   const diffPesoLabel = diffPeso == null ? "—" : Math.abs(diffPeso) < 0.5 ? "No peso ideal" : diffPeso > 0 ? `Perder ${fmt(Math.abs(diffPeso))} kg` : `Ganhar ${fmt(Math.abs(diffPeso))} kg`;
 
+  // Helpers definidos aqui dentro pra fechar sobre `colors`/`s` do tema atual.
+  function RefTable({ rows, current }: { rows: Array<[string, string]>; current: string | null }) {
+    return (
+      <View style={s.refCard}>
+        {rows.map(([label, value], i) => {
+          const active = label === current;
+          return (
+            <View key={label} style={[s.refRow, active ? s.refRowActive : null, i === rows.length - 1 ? { borderBottom: 0 } : null]}>
+              <Text style={active ? s.refLabelActive : s.refLabel}>{label}</Text>
+              <Text style={active ? s.refValueActive : s.refValue}>{value}</Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
+  function AcsmTable({ idade, feminino }: { idade: number | null; feminino: boolean }) {
+    const idx = acsmFaixaIndex(idade);
+    return (
+      <View style={s.refCard}>
+        <View style={[s.acsmRow, { backgroundColor: colors.card }]}>
+          <Text style={[s.acsmLabelCell, s.acsmHeadText]}>Idade</Text>
+          {ACSM_GORDURA_IDEAL.map((f, i) => (
+            <Text key={f.faixa} style={[s.acsmCell, s.acsmHeadText, i === idx ? s.acsmColActive : null]}>{f.faixa}</Text>
+          ))}
+        </View>
+        <View style={s.acsmRow}>
+          <Text style={[s.acsmLabelCell, !feminino ? s.refLabelActiveInline : null]}>Homens</Text>
+          {ACSM_GORDURA_IDEAL.map((f, i) => (
+            <Text key={f.faixa} style={[s.acsmCell, !feminino && i === idx ? s.acsmCellActive : null]}>{f.homens}%</Text>
+          ))}
+        </View>
+        <View style={[s.acsmRow, { borderBottom: 0 }]}>
+          <Text style={[s.acsmLabelCell, feminino ? s.refLabelActiveInline : null]}>Mulheres</Text>
+          {ACSM_GORDURA_IDEAL.map((f, i) => (
+            <Text key={f.faixa} style={[s.acsmCell, feminino && i === idx ? s.acsmCellActive : null]}>{f.mulheres}%</Text>
+          ))}
+        </View>
+        <Text style={s.acsmSource}>Fonte: ACSM — Lea & Febiger, 1986</Text>
+      </View>
+    );
+  }
+
+  function PageFooter({ page, total, aluno }: { page: number; total: number; aluno: string }) {
+    return (
+      <View style={s.pageFooter} fixed>
+        <Text style={s.footerText}>{aluno}</Text>
+        <Text style={s.footerText}>ARIÉS</Text>
+        <Text style={s.footerText}>Página {page} de {total}</Text>
+      </View>
+    );
+  }
+
+  function Field({ label, value, width }: { label: string; value: string; width?: "cell" | "cell3" | "cell4" }) {
+    const w = width === "cell3" ? s.cell3 : width === "cell4" ? s.cell4 : s.cell;
+    return (
+      <View style={w}>
+        <Text style={s.label}>{label}</Text>
+        <Text style={s.value}>{value || "—"}</Text>
+      </View>
+    );
+  }
+
   return (
     <Document title={`Avaliação Física — ${aluno.full_name}`} author="ARIÉS">
       {/* CAPA */}
@@ -205,6 +208,7 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal }: Avaliac
           personName={aluno.full_name}
           personMeta={`${calcAge(aluno.birth_date)} · ${aluno.gender || "—"} · Avaliação de ${fmtDate(a.data_avaliacao)}`}
           personPhotoUrl={fotoUrl}
+          tema={tema}
         />
       </Page>
 
@@ -343,11 +347,4 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal }: Avaliac
       </Page>
     </Document>
   );
-}
-
-function protocoloLabel(p: string | null) {
-  if (p === "jp3") return "Jackson & Pollock (3 dobras)";
-  if (p === "jp7") return "Jackson & Pollock (7 dobras)";
-  if (p === "obesos") return "Protocolo Obesos (Weltman)";
-  return "—";
 }

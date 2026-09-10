@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useMemo, useRef, useState } from "react";
-import { TrendingUp, TrendingDown, Download, FileText, Share2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Download, FileText, Share2, Printer } from "lucide-react";
 import { useAlunoBasic, useEvolucao, useFotos } from "@/lib/queries/aluno-modulos";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,6 +77,7 @@ function EvolucaoPage() {
   const { id } = Route.useParams();
   const chartRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [impressao, setImpressao] = useState(false);
 
   const { data: aluno } = useAlunoBasic(id);
   const { data, isLoading, isError, refetch } = useEvolucao<Row>(id);
@@ -143,7 +145,9 @@ function EvolucaoPage() {
 
       let chartImage: string | null = null;
       // Gráfico só faz sentido no relatório completo — no comparativo (2 pontos) é omitido.
-      if (modo === "completo") {
+      // Na versão impressão também não entra: é gerado com fundo escuro fixo, ficaria
+      // um retângulo escuro gastando tinta à toa numa página pensada pra ser branca.
+      if (modo === "completo" && !impressao) {
         const svg = chartRef.current?.querySelector("svg");
         if (svg) chartImage = await svgToPng(svg as SVGSVGElement, 1200, 480);
       }
@@ -195,6 +199,7 @@ function EvolucaoPage() {
           fotos={fotosPdf}
           personal={personal}
           modo={modo}
+          tema={impressao ? "claro" : "escuro"}
         />,
       ).toBlob();
       const sufixo = modo === "comparativo" ? "Comparativo" : "Completo";
@@ -241,23 +246,29 @@ function EvolucaoPage() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Análise</p>
           <h2 className="font-display text-2xl font-semibold">Evolução do Aluno</h2>
         </div>
-        <div className="flex gap-3 flex-wrap">
-          <div className="flex gap-1">
-            <Button variant="outline" onClick={() => exportPDF("comparativo", "compartilhar")} disabled={exporting || (data?.length ?? 0) < 2} className="gold-border">
-              <Share2 className="size-4" /> Comparativo (últimas 2)
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => exportPDF("comparativo", "baixar")} disabled={exporting || (data?.length ?? 0) < 2} title="Baixar comparativo" className="gold-border shrink-0">
-              <Download className="size-4" />
-            </Button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-1">
+              <Button variant="outline" onClick={() => exportPDF("comparativo", "compartilhar")} disabled={exporting || (data?.length ?? 0) < 2} className="gold-border">
+                <Share2 className="size-4" /> Comparativo (últimas 2)
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => exportPDF("comparativo", "baixar")} disabled={exporting || (data?.length ?? 0) < 2} title="Baixar comparativo" className="gold-border shrink-0">
+                <Download className="size-4" />
+              </Button>
+            </div>
+            <div className="flex gap-1">
+              <Button onClick={() => exportPDF("completo", "compartilhar")} disabled={exporting}>
+                <Share2 className="size-4" /> {exporting ? "Gerando..." : "Completo (histórico)"}
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => exportPDF("completo", "baixar")} disabled={exporting} title="Baixar completo" className="shrink-0">
+                <Download className="size-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-1">
-            <Button onClick={() => exportPDF("completo", "compartilhar")} disabled={exporting}>
-              <Share2 className="size-4" /> {exporting ? "Gerando..." : "Completo (histórico)"}
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => exportPDF("completo", "baixar")} disabled={exporting} title="Baixar completo" className="shrink-0">
-              <Download className="size-4" />
-            </Button>
-          </div>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <Checkbox checked={impressao} onCheckedChange={(v) => setImpressao(!!v)} />
+            <Printer className="size-3.5" /> Versão impressão (P&B, economiza tinta)
+          </label>
         </div>
       </div>
 

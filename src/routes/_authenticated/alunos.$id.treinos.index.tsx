@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
-import { Plus, Dumbbell, Trash2, Sparkles, X, Check, PlayCircle, Camera, Loader2, FileDown, Share2 } from "lucide-react";
+import { Plus, Dumbbell, Trash2, Sparkles, X, Check, PlayCircle, Camera, Loader2, FileDown, Share2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useAluno } from "@/lib/queries/alunos";
@@ -19,6 +19,7 @@ import { entregarPDF } from "@/lib/pdf/share";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TEMPLATES, ajustarItem, type Template, type AjusteNivel } from "@/lib/treinos/templates";
 import { extractTreinoFromImage } from "@/lib/admin.functions";
 import { ErrorState } from "@/components/ui/error-state";
@@ -39,6 +40,7 @@ function TreinosList() {
   const extractFn = useServerFn(extractTreinoFromImage);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [genPdf, setGenPdf] = useState(false);
+  const [impressao, setImpressao] = useState(false);
 
   const { data: treinos, isLoading, isError, refetch } = useTreinosList(id);
   const { data: aluno } = useAluno(id);
@@ -57,7 +59,7 @@ function TreinosList() {
         import("@react-pdf/renderer"),
         import("@/lib/pdf/TreinoPDF"),
       ]);
-      const blob = await pdf(<TreinoPDF aluno={aluno} treinos={completos} fotoUrl={fotoUrl} personal={personal} />).toBlob();
+      const blob = await pdf(<TreinoPDF aluno={aluno} treinos={completos} fotoUrl={fotoUrl} personal={personal} tema={impressao ? "claro" : "escuro"} />).toBlob();
       const filename = `treino-${aluno.full_name.replace(/\s+/g, "_")}.pdf`;
       const resultado = await entregarPDF(blob, filename, modo, {
         title: "Ficha de Treino",
@@ -120,24 +122,32 @@ function TreinosList() {
           <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Programação</p>
           <h2 className="font-display text-2xl font-semibold">Fichas de Treino</h2>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            {(treinos?.length ?? 0) > 0 ? (
+              <>
+                <Button onClick={() => gerarPDF("compartilhar")} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
+                  {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><Share2 className="size-4" /> Enviar</>}
+                </Button>
+                <Button variant="outline" onClick={() => gerarPDF("baixar")} disabled={genPdf} className="gold-border">
+                  <FileDown className="size-4" /> Baixar
+                </Button>
+              </>
+            ) : null}
+            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={ocrLoading} className="gold-border">
+              {ocrLoading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />} Importar de foto
+            </Button>
+            <Button variant="outline" onClick={() => setTplOpen(true)} className="gold-border">
+              <Sparkles className="size-4" /> Usar template
+            </Button>
+          </div>
           {(treinos?.length ?? 0) > 0 ? (
-            <>
-              <Button onClick={() => gerarPDF("compartilhar")} disabled={genPdf} className="bg-primary text-primary-foreground hover:opacity-90">
-                {genPdf ? <><Loader2 className="size-4 animate-spin" /> Gerando</> : <><Share2 className="size-4" /> Enviar</>}
-              </Button>
-              <Button variant="outline" onClick={() => gerarPDF("baixar")} disabled={genPdf} className="gold-border">
-                <FileDown className="size-4" /> Baixar
-              </Button>
-            </>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+              <Checkbox checked={impressao} onCheckedChange={(v) => setImpressao(!!v)} />
+              <Printer className="size-3.5" /> Versão impressão (P&B, economiza tinta)
+            </label>
           ) : null}
-          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={ocrLoading} className="gold-border">
-            {ocrLoading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />} Importar de foto
-          </Button>
-          <Button variant="outline" onClick={() => setTplOpen(true)} className="gold-border">
-            <Sparkles className="size-4" /> Usar template
-          </Button>
         </div>
       </div>
 
