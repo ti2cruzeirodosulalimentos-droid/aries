@@ -1,8 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, HeartPulse, Dumbbell, Camera, PersonStanding, Settings2, Check, AlertTriangle } from "lucide-react";
+import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, HeartPulse, Dumbbell, Camera, PersonStanding, Settings2, Check, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useAlunoParaAvaliacao, useAvaliacaoDetail, useCreateAvaliacao, useUpdateAvaliacao, useUltimaAvaliacao } from "@/lib/queries/avaliacoes";
+import { useProdutoAvaliacao } from "@/lib/queries/financeiro";
 import { useAuth } from "@/lib/auth";
 import { avaliacaoSchema, validate } from "@/lib/validation/schemas";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,8 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
   const create = useCreateAvaliacao(aluno_id);
   const update = useUpdateAvaliacao(aluno_id);
   const saving = isEdit ? update.isPending : create.isPending;
+  // Preço fixo que cada avaliação nova lança no financeiro (editar não lança de novo).
+  const { data: produtoAval, isLoading: carregandoPreco } = useProdutoAvaliacao();
 
   // Modo criação: pré-preenche gênero/idade a partir do cadastro do aluno.
   useEffect(() => {
@@ -267,8 +270,12 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
       });
     } else {
       create.mutate(payload, {
-        onSuccess: (id) => {
-          toast.success("Avaliação salva");
+        onSuccess: ({ id, vendaCentavos }) => {
+          if (vendaCentavos != null) {
+            toast.success(`Avaliação salva · ${BRL(vendaCentavos)} lançado no financeiro`);
+          } else {
+            toast.warning("Avaliação salva, mas nenhum lançamento foi gerado no financeiro. Defina o preço da avaliação na tela Financeiro.", { duration: 9000 });
+          }
           navigate({ to: "/alunos/$id/avaliacoes/$avalId", params: { id: aluno_id, avalId: id } });
         },
         onError: (e: any) => toast.error(e.message ?? "Erro ao salvar"),
@@ -355,6 +362,22 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
             </p>
             <p className="text-sm text-muted-foreground">
               Falta preencher: <strong className="text-foreground">{missingDobrasLabels.join(", ")}</strong> para o protocolo {v.protocolo?.toUpperCase()}.
+            </p>
+          </div>
+        ) : null}
+
+        {!isEdit && produtoAval ? (
+          <div className="luxury-card p-3 flex items-center gap-3 border-primary/30">
+            <Wallet className="size-4 text-primary shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              Ao salvar, lança <strong className="text-foreground">{BRL(produtoAval.preco_centavos)}</strong> no financeiro (preço fixo da avaliação).
+            </p>
+          </div>
+        ) : !isEdit && !carregandoPreco ? (
+          <div className="luxury-card p-3 flex items-center gap-3 border-destructive/40 bg-destructive/5">
+            <AlertTriangle className="size-4 text-destructive shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              Nenhum produto de avaliação ativo — esta avaliação <strong className="text-foreground">não vai gerar lançamento</strong> no financeiro. Defina o preço em Financeiro.
             </p>
           </div>
         ) : null}
@@ -664,6 +687,7 @@ function fmt(v: any, suffix = "", digits = 2) {
   if (v === null || v === undefined) return "—";
   return Number(v).toFixed(digits) + suffix;
 }
+const BRL = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 function fmtDate(d: string) {
   if (!d) return "—";
   const [y, m, day] = d.split("-");

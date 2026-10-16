@@ -3,6 +3,9 @@ import { useState } from "react";
 import { ArrowLeft, FileDown, Loader2, Share2, Trash2, Calculator, Pencil, AlertTriangle, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useAvaliacaoDetail, useDeleteAvaliacao } from "@/lib/queries/avaliacoes";
+import { useVendaDaAvaliacao } from "@/lib/queries/financeiro";
+import { usePermissions } from "@/lib/permissions";
+import { useAuth } from "@/lib/auth";
 import { requiredDobras, DOBRAS } from "@/components/AvaliacaoForm";
 import { urlToDataUrl, fetchPersonalBranding } from "@/lib/pdf/utils";
 import { entregarPDF } from "@/lib/pdf/share";
@@ -22,6 +25,12 @@ function AvaliacaoDetail() {
   const [impressao, setImpressao] = useState(false);
 
   const { data, isLoading, isError, refetch } = useAvaliacaoDetail(aluno_id, avalId);
+  // O lançamento é do profissional que fez a avaliação (ou admin): quem não é dono não o enxerga (RLS),
+  // então nem consultamos pra não mostrar um falso "sem lançamento".
+  const { user } = useAuth();
+  const { isAdmin, isAluno } = usePermissions();
+  const verFinanceiro = !isAluno && (isAdmin || data?.aval.personal_id === user?.id);
+  const { data: venda } = useVendaDaAvaliacao(verFinanceiro ? avalId : "");
 
   const del = useDeleteAvaliacao(aluno_id);
   function removerAvaliacao() {
@@ -101,6 +110,13 @@ function AvaliacaoDetail() {
       <div>
         <p className="text-[10px] uppercase tracking-[0.3em] text-primary">Avaliação de {formatDate(a.data_avaliacao)}</p>
         <h2 className="font-display text-2xl font-semibold">{protocoloLabel(a.protocolo)}</h2>
+        {verFinanceiro ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {venda
+              ? <>Financeiro: <strong className={venda.status === "cancelado" ? "text-destructive" : "text-primary"}>{(venda.valor_centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong> lançado automaticamente{venda.status === "cancelado" ? " (cancelado)" : ""}</>
+              : "Financeiro: sem lançamento vinculado a esta avaliação"}
+          </p>
+        ) : null}
       </div>
 
       {/* Resultados destacados */}

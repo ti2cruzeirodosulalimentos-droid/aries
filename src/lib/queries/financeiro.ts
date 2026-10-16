@@ -7,15 +7,87 @@ import { qk } from "@/lib/query-keys";
 const db = supabase as any;
 
 const VENDAS_SELECT =
-  "id, aluno_id, personal_id, produto_id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, alunos(full_name), produtos(nome, tipo)";
+  "id, aluno_id, personal_id, produto_id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, observacao, alunos(full_name), produtos(nome, tipo)";
+
+export interface ProdutoAvaliacao {
+  id: string;
+  nome: string;
+  preco_centavos: number;
+}
+
+/**
+ * Produto de avaliação ativo no catálogo — o preço fixo que cada avaliação cobra.
+ * Mesma regra do gatilho no banco (avaliacao_gera_venda): o ativo mais recente.
+ */
+export function useProdutoAvaliacao() {
+  return useQuery({
+    queryKey: qk.produtos.avaliacao,
+    queryFn: async (): Promise<ProdutoAvaliacao | null> => {
+      const { data, error } = await db
+        .from("produtos")
+        .select("id, nome, preco_centavos")
+        .eq("tipo", "avaliacao")
+        .eq("ativo", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
+/** Define o preço fixo da avaliação: atualiza o produto ativo ou cria um se não existir (só admin, por RLS). */
+export function useSalvarPrecoAvaliacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ produto, precoCentavos }: { produto: ProdutoAvaliacao | null; precoCentavos: number }) => {
+      const preco = Math.round(Number(precoCentavos));
+      if (!Number.isFinite(preco) || preco <= 0 || preco > 100_000_000) throw new Error("Preço inválido (R$ 0,01 a R$ 1.000.000)");
+      if (produto) {
+        const { error } = await db.from("produtos").update({ preco_centavos: preco }).eq("id", produto.id);
+        if (error) throw error;
+      } else {
+        const { error } = await db.from("produtos").insert({
+          tipo: "avaliacao", nome: "Avaliação Física Personalizada", duracao_meses: 0, preco_centavos: preco, ativo: true,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.produtos.all }),
+  });
+}
+
+export interface VendaDaAvaliacao {
+  id: string;
+  valor_centavos: number;
+  status: string;
+}
+
+/** Lançamento financeiro gerado por uma avaliação (null = ainda não existe, ex.: avaliações antigas). */
+export function useVendaDaAvaliacao(avalId: string) {
+  return useQuery({
+    queryKey: qk.vendas.byAvaliacao(avalId),
+    enabled: !!avalId,
+    queryFn: async (): Promise<VendaDaAvaliacao | null> => {
+      const { data, error } = await db
+        .from("vendas")
+        .select("id, valor_centavos, status")
+        .eq("avaliacao_id", avalId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
 
 /** Vendas com nome do aluno e produto embutidos (mais recente primeiro). */
 export function useVendas(userId: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: qk.vendas.list(userId),
     enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<any[]> => {
+      const { data, error } = await db
         .from("vendas")
         .select(VENDAS_SELECT)
         .order("data_venda", { ascending: false });

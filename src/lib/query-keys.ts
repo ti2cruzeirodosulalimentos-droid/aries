@@ -55,6 +55,7 @@ export const qk = {
   vendas: {
     all: ["financeiro", "vendas"] as const,
     list: (uid?: string) => ["financeiro", "vendas", uid] as const,
+    byAvaliacao: (avalId: string) => ["financeiro", "vendas", "avaliacao", avalId] as const,
   },
   metasFin: {
     all: ["financeiro", "meta"] as const,
@@ -65,6 +66,7 @@ export const qk = {
     all: ["produtos"] as const,
     ativos: ["produtos", "ativos"] as const, // catálogo ativo (nova venda)
     admin: ["produtos", "admin"] as const, // todos, p/ gestão
+    avaliacao: ["produtos", "avaliacao"] as const, // produto/preço fixo da avaliação
   },
   dashboard: {
     all: ["dashboard"] as const,

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { DollarSign, Plus, Package, Target, TrendingUp, Users, Trash2, Pencil } from "lucide-react";
+import { DollarSign, Plus, Package, Target, TrendingUp, Users, Trash2, Pencil, ClipboardCheck } from "lucide-react";
 import {
   useVendas, useMetaFinanceira, useDeleteVenda, useCreateVenda, useUpsertMetaFinanceira,
   useAlunosMin, useProdutosAtivos, useProdutosAdmin, useUpsertProduto, useDeleteProduto,
+  useProdutoAvaliacao, useSalvarPrecoAvaliacao,
 } from "@/lib/queries/financeiro";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,6 +88,8 @@ function FinanceiroPage() {
         </div>
       </header>
 
+      <PrecoAvaliacaoCard isAdmin={isAdmin} />
+
       {isLoading ? (
         <>
           <StatsSkeleton count={4} />
@@ -124,11 +127,11 @@ function FinanceiroPage() {
           {/* Celular: cards */}
           <div className="space-y-2 sm:hidden">
             {vendas.slice(0, 20).map((v) => (
-              <div key={v.id} className="rounded-lg border border-border/40 p-3">
+              <div key={v.id} className={`rounded-lg border border-border/40 p-3 ${v.status === "cancelado" ? "opacity-60" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{(v.alunos as { full_name?: string } | null)?.full_name ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{(v.produtos as { nome?: string } | null)?.nome ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">{(v.produtos as { nome?: string } | null)?.nome ?? "—"}<VendaTags v={v} /></p>
                   </div>
                   <button onClick={() => removerVenda(v.id)} className="shrink-0 text-destructive/70 hover:text-destructive">
                     <Trash2 className="size-4" />
@@ -136,7 +139,7 @@ function FinanceiroPage() {
                 </div>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{new Date(v.data_venda).toLocaleDateString("pt-BR")}</span>
-                  <span className="font-semibold gold-text">{BRL(v.valor_centavos)}</span>
+                  <span className={`font-semibold gold-text ${v.status === "cancelado" ? "line-through" : ""}`}>{BRL(v.valor_centavos)}</span>
                 </div>
               </div>
             ))}
@@ -151,11 +154,11 @@ function FinanceiroPage() {
               </thead>
               <tbody>
                 {vendas.slice(0, 20).map((v) => (
-                  <tr key={v.id} className="border-t border-border/40">
+                  <tr key={v.id} className={`border-t border-border/40 ${v.status === "cancelado" ? "opacity-60" : ""}`}>
                     <td className="py-2">{new Date(v.data_venda).toLocaleDateString("pt-BR")}</td>
                     <td>{(v.alunos as { full_name?: string } | null)?.full_name ?? "—"}</td>
-                    <td>{(v.produtos as { nome?: string } | null)?.nome ?? "—"}</td>
-                    <td className="text-right font-medium">{BRL(v.valor_centavos)}</td>
+                    <td>{(v.produtos as { nome?: string } | null)?.nome ?? "—"}<VendaTags v={v} /></td>
+                    <td className={`text-right font-medium ${v.status === "cancelado" ? "line-through" : ""}`}>{BRL(v.valor_centavos)}</td>
                     <td className="text-right">
                       <button onClick={() => removerVenda(v.id)} className="text-destructive/70 hover:text-destructive">
                         <Trash2 className="size-3.5" />
@@ -187,6 +190,98 @@ function FinanceiroPage() {
       {showNew && <NovaVendaModal onClose={() => setShowNew(false)} userId={user!.id} />}
       {showProdutos && <ProdutosModal onClose={() => setShowProdutos(false)} />}
     </div>
+  );
+}
+
+function VendaTags({ v }: { v: { observacao?: string | null; status?: string } }) {
+  // A observação é escrita pelo gatilho do banco (avaliacao_gera_venda) — por ela, e não pelo
+  // vínculo avaliacao_id (que zera quando a avaliação é excluída), a tag sobrevive ao cancelamento.
+  const automatico = typeof v.observacao === "string" && v.observacao.startsWith("Gerado automaticamente");
+  return (
+    <>
+      {automatico ? (
+        <span className="ml-2 rounded-full border border-primary/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary">Automático</span>
+      ) : null}
+      {v.status === "cancelado" ? (
+        <span className="ml-2 rounded-full border border-destructive/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-destructive">Cancelada</span>
+      ) : null}
+    </>
+  );
+}
+
+// "150,00" / "1.500,00" / "150.5" -> centavos (NaN se inválido).
+function parseBRL(s: string): number {
+  let t = s.replace(/[^\d.,]/g, "");
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  return Math.round(parseFloat(t) * 100);
+}
+
+/** Preço fixo da avaliação: cada avaliação salva lança este valor no financeiro automaticamente. */
+function PrecoAvaliacaoCard({ isAdmin }: { isAdmin: boolean }) {
+  const { data: produto, isLoading } = useProdutoAvaliacao();
+  const salvar = useSalvarPrecoAvaliacao();
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState("");
+
+  function abrir() {
+    setVal(produto ? (produto.preco_centavos / 100).toFixed(2).replace(".", ",") : "");
+    setOpen(true);
+  }
+  function confirmar() {
+    salvar.mutate(
+      { produto: produto ?? null, precoCentavos: parseBRL(val) },
+      {
+        onSuccess: () => { toast.success("Preço da avaliação atualizado"); setOpen(false); },
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
+  }
+
+  return (
+    <section className="luxury-card flex flex-wrap items-center justify-between gap-4 p-5">
+      <div className="flex items-center gap-4">
+        <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 gold-border"><ClipboardCheck className="size-5 text-primary" /></div>
+        <div>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Preço fixo da avaliação</p>
+          {isLoading ? (
+            <Skeleton className="mt-1 h-7 w-28" />
+          ) : produto ? (
+            <p className="font-display text-2xl gold-text">{BRL(produto.preco_centavos)}</p>
+          ) : (
+            <p className="mt-1 text-sm text-destructive">Não definido — as avaliações não geram lançamento</p>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="max-w-xs text-xs text-muted-foreground">
+          {produto || isLoading
+            ? "Toda avaliação salva lança este valor aqui automaticamente. Mudar o preço vale só pras próximas."
+            : isAdmin ? "Defina o preço pra cada avaliação passar a gerar o lançamento sozinha." : "Peça ao administrador pra definir o preço da avaliação."}
+        </p>
+        {isAdmin ? (
+          <Button variant="outline" onClick={abrir} className="gap-2 gold-border">
+            <Pencil className="size-4" /> {produto ? "Alterar preço" : "Definir preço"}
+          </Button>
+        ) : null}
+      </div>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8" onClick={() => setOpen(false)}>
+          <div className="luxury-card w-full max-w-sm space-y-4 p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg">Preço da avaliação</h3>
+            <div>
+              <Label>Valor por avaliação (R$)</Label>
+              <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder="150,00" inputMode="decimal" />
+              <p className="mt-1 text-xs text-muted-foreground">Avaliações já lançadas mantêm o valor que tinham.</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button onClick={confirmar} disabled={salvar.isPending}>Salvar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

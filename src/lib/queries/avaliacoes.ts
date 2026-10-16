@@ -80,7 +80,11 @@ export function useAvaliacaoDetail(alunoId: string, avalId: string) {
   });
 }
 
-/** Insere uma avaliação física já montada pela tela; devolve o id criado. */
+/**
+ * Insere uma avaliação física já montada pela tela. O lançamento financeiro é gerado
+ * pelo próprio banco (gatilho avaliacao_gera_venda); aqui só confirmamos o valor lançado
+ * pra mostrar ao usuário (vendaCentavos = null quando nada foi lançado).
+ */
 export function useCreateAvaliacao(alunoId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -91,11 +95,20 @@ export function useCreateAvaliacao(alunoId: string) {
         .select("id")
         .single();
       if (error) throw error;
-      return data.id as string;
+      const id = data.id as string;
+      // A confirmação é só informativa: se falhar, a avaliação (já salva) não pode falhar junto.
+      const { data: venda } = await (supabase as any)
+        .from("vendas")
+        .select("valor_centavos")
+        .eq("avaliacao_id", id)
+        .maybeSingle();
+      return { id, vendaCentavos: (venda?.valor_centavos ?? null) as number | null };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.avaliacoes.all });
       qc.invalidateQueries({ queryKey: qk.evolucao.byAluno(alunoId) });
+      qc.invalidateQueries({ queryKey: qk.vendas.all });
+      qc.invalidateQueries({ queryKey: qk.dashboard.all });
     },
   });
 }
@@ -113,6 +126,9 @@ export function useUpdateAvaliacao(alunoId: string) {
       qc.invalidateQueries({ queryKey: qk.avaliacoes.all });
       qc.invalidateQueries({ queryKey: qk.avaliacoes.detail(id) });
       qc.invalidateQueries({ queryKey: qk.evolucao.byAluno(alunoId) });
+      // editar a data da avaliação move também a data do lançamento financeiro
+      qc.invalidateQueries({ queryKey: qk.vendas.all });
+      qc.invalidateQueries({ queryKey: qk.dashboard.all });
     },
   });
 }
@@ -128,6 +144,9 @@ export function useDeleteAvaliacao(alunoId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.avaliacoes.all });
       qc.invalidateQueries({ queryKey: qk.evolucao.byAluno(alunoId) });
+      // o banco cancela o lançamento financeiro da avaliação removida
+      qc.invalidateQueries({ queryKey: qk.vendas.all });
+      qc.invalidateQueries({ queryKey: qk.dashboard.all });
     },
   });
 }
