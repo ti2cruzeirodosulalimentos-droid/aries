@@ -3,7 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, HeartPulse, Dumbbell, Camera, PersonStanding, Settings2, Check, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useAlunoParaAvaliacao, useAvaliacaoDetail, useCreateAvaliacao, useUpdateAvaliacao, useUltimaAvaliacao } from "@/lib/queries/avaliacoes";
-import { useProdutoAvaliacao } from "@/lib/queries/financeiro";
+import { useValorAvaliacao } from "@/lib/queries/financeiro";
 import { useAuth } from "@/lib/auth";
 import { avaliacaoSchema, validate } from "@/lib/validation/schemas";
 import { Input } from "@/components/ui/input";
@@ -126,8 +126,10 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
   const create = useCreateAvaliacao(aluno_id);
   const update = useUpdateAvaliacao(aluno_id);
   const saving = isEdit ? update.isPending : create.isPending;
-  // Preço fixo que cada avaliação nova lança no financeiro (editar não lança de novo).
-  const { data: produtoAval, isLoading: carregandoPreco } = useProdutoAvaliacao();
+  // Valor que o banco grava em cada avaliação nova e lança no financeiro (editar não lança de novo).
+  const { data: valorPadrao, isLoading: carregandoValor } = useValorAvaliacao();
+  // Valor mostrado no campo: ao criar, o padrão; ao editar, o que ficou gravado na avaliação.
+  const valorAval = isEdit ? (existing?.aval?.valor_centavos ?? null) : (valorPadrao ?? null);
 
   // Modo criação: pré-preenche gênero/idade a partir do cadastro do aluno.
   useEffect(() => {
@@ -274,7 +276,7 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
           if (vendaCentavos != null) {
             toast.success(`Avaliação salva · ${BRL(vendaCentavos)} lançado no financeiro`);
           } else {
-            toast.warning("Avaliação salva, mas nenhum lançamento foi gerado no financeiro. Defina o preço da avaliação na tela Financeiro.", { duration: 9000 });
+            toast.warning("Avaliação salva, mas nenhum lançamento foi gerado no financeiro. Defina o valor da avaliação na tela Financeiro.", { duration: 9000 });
           }
           navigate({ to: "/alunos/$id/avaliacoes/$avalId", params: { id: aluno_id, avalId: id } });
         },
@@ -366,18 +368,21 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
           </div>
         ) : null}
 
-        {!isEdit && produtoAval ? (
-          <div className="luxury-card p-3 flex items-center gap-3 border-primary/30">
-            <Wallet className="size-4 text-primary shrink-0" />
-            <p className="text-sm text-muted-foreground">
-              Ao salvar, lança <strong className="text-foreground">{BRL(produtoAval.preco_centavos)}</strong> no financeiro (preço fixo da avaliação).
+        {valorAval != null && valorAval > 0 ? (
+          <div className="luxury-card p-3 space-y-2 border-primary/30">
+            <Label className="flex items-center gap-2 text-xs uppercase tracking-wider text-primary">
+              <Wallet className="size-4" /> Valor da avaliação
+            </Label>
+            <Input readOnly value={BRL(valorAval)} />
+            <p className="text-xs text-muted-foreground">
+              {isEdit ? "Valor registrado nesta avaliação." : "Lançado automaticamente no financeiro ao salvar."}
             </p>
           </div>
-        ) : !isEdit && !carregandoPreco ? (
+        ) : !isEdit && !carregandoValor ? (
           <div className="luxury-card p-3 flex items-center gap-3 border-destructive/40 bg-destructive/5">
             <AlertTriangle className="size-4 text-destructive shrink-0" />
             <p className="text-sm text-muted-foreground">
-              Nenhum produto de avaliação ativo — esta avaliação <strong className="text-foreground">não vai gerar lançamento</strong> no financeiro. Defina o preço em Financeiro.
+              Valor da avaliação não definido — esta avaliação <strong className="text-foreground">não vai gerar lançamento</strong> no financeiro. Defina o valor em Financeiro.
             </p>
           </div>
         ) : null}

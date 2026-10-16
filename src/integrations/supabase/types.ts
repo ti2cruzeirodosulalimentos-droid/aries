@@ -406,6 +406,7 @@ export type Database = {
           rcq: number | null
           rcq_classificacao: string | null
           updated_at: string
+          valor_centavos: number | null
           vo2_classificacao: string | null
           vo2_distancia: number | null
           vo2_fc_final: number | null
@@ -481,6 +482,7 @@ export type Database = {
           rcq?: number | null
           rcq_classificacao?: string | null
           updated_at?: string
+          valor_centavos?: number | null
           vo2_classificacao?: string | null
           vo2_distancia?: number | null
           vo2_fc_final?: number | null
@@ -556,6 +558,7 @@ export type Database = {
           rcq?: number | null
           rcq_classificacao?: string | null
           updated_at?: string
+          valor_centavos?: number | null
           vo2_classificacao?: string | null
           vo2_distancia?: number | null
           vo2_fc_final?: number | null

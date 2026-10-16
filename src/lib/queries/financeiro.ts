@@ -9,52 +9,32 @@ const db = supabase as any;
 const VENDAS_SELECT =
   "id, aluno_id, personal_id, produto_id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, observacao, alunos(full_name), produtos(nome, tipo)";
 
-export interface ProdutoAvaliacao {
-  id: string;
-  nome: string;
-  preco_centavos: number;
-}
-
 /**
- * Produto de avaliação ativo no catálogo — o preço fixo que cada avaliação cobra.
- * Mesma regra do gatilho no banco (avaliacao_gera_venda): o ativo mais recente.
+ * Valor padrão da avaliação, em centavos (null = ainda não definido). O banco grava esse valor
+ * em cada avaliação nova (avaliacoes_fisicas.valor_centavos) e o lança no financeiro sozinho.
  */
-export function useProdutoAvaliacao() {
+export function useValorAvaliacao() {
   return useQuery({
-    queryKey: qk.produtos.avaliacao,
-    queryFn: async (): Promise<ProdutoAvaliacao | null> => {
-      const { data, error } = await db
-        .from("produtos")
-        .select("id, nome, preco_centavos")
-        .eq("tipo", "avaliacao")
-        .eq("ativo", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    queryKey: qk.config.valorAvaliacao,
+    queryFn: async (): Promise<number | null> => {
+      const { data, error } = await db.from("config_financeiro").select("valor_avaliacao_centavos").maybeSingle();
       if (error) throw error;
-      return data ?? null;
+      return data ? Number(data.valor_avaliacao_centavos) : null;
     },
   });
 }
 
-/** Define o preço fixo da avaliação: atualiza o produto ativo ou cria um se não existir (só admin, por RLS). */
-export function useSalvarPrecoAvaliacao() {
+/** Define o valor padrão da avaliação; 0 = não cobrar (só admin, por RLS). Vale só pras próximas avaliações. */
+export function useSalvarValorAvaliacao() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ produto, precoCentavos }: { produto: ProdutoAvaliacao | null; precoCentavos: number }) => {
-      const preco = Math.round(Number(precoCentavos));
-      if (!Number.isFinite(preco) || preco <= 0 || preco > 100_000_000) throw new Error("Preço inválido (R$ 0,01 a R$ 1.000.000)");
-      if (produto) {
-        const { error } = await db.from("produtos").update({ preco_centavos: preco }).eq("id", produto.id);
-        if (error) throw error;
-      } else {
-        const { error } = await db.from("produtos").insert({
-          tipo: "avaliacao", nome: "Avaliação Física Personalizada", duracao_meses: 0, preco_centavos: preco, ativo: true,
-        });
-        if (error) throw error;
-      }
+    mutationFn: async (centavos: number) => {
+      const valor = Math.round(Number(centavos));
+      if (!Number.isFinite(valor) || valor < 0 || valor > 100_000_000) throw new Error("Valor inválido (R$ 0,00 a R$ 1.000.000)");
+      const { error } = await db.from("config_financeiro").upsert({ id: true, valor_avaliacao_centavos: valor });
+      if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.produtos.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.config.valorAvaliacao }),
   });
 }
 

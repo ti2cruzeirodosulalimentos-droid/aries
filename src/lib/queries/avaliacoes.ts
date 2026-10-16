@@ -81,8 +81,9 @@ export function useAvaliacaoDetail(alunoId: string, avalId: string) {
 }
 
 /**
- * Insere uma avaliação física já montada pela tela. O lançamento financeiro é gerado
- * pelo próprio banco (gatilho avaliacao_gera_venda); aqui só confirmamos o valor lançado
+ * Insere uma avaliação física já montada pela tela. O valor da avaliação (valor_centavos) e o
+ * lançamento financeiro são gerados pelo próprio banco (gatilhos avaliacao_define_valor e
+ * avaliacao_gera_venda) — a tela não envia valor; aqui só confirmamos o valor lançado
  * pra mostrar ao usuário (vendaCentavos = null quando nada foi lançado).
  */
 export function useCreateAvaliacao(alunoId: string) {

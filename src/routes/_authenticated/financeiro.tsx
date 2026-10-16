@@ -4,7 +4,7 @@ import { DollarSign, Plus, Package, Target, TrendingUp, Users, Trash2, Pencil, C
 import {
   useVendas, useMetaFinanceira, useDeleteVenda, useCreateVenda, useUpsertMetaFinanceira,
   useAlunosMin, useProdutosAtivos, useProdutosAdmin, useUpsertProduto, useDeleteProduto,
-  useProdutoAvaliacao, useSalvarPrecoAvaliacao,
+  useValorAvaliacao, useSalvarValorAvaliacao,
 } from "@/lib/queries/financeiro";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -217,25 +217,23 @@ function parseBRL(s: string): number {
   return Math.round(parseFloat(t) * 100);
 }
 
-/** Preço fixo da avaliação: cada avaliação salva lança este valor no financeiro automaticamente. */
+/** Valor da avaliação: cada avaliação salva grava este valor nela e o lança no financeiro automaticamente. */
 function PrecoAvaliacaoCard({ isAdmin }: { isAdmin: boolean }) {
-  const { data: produto, isLoading } = useProdutoAvaliacao();
-  const salvar = useSalvarPrecoAvaliacao();
+  const { data: valor, isLoading } = useValorAvaliacao();
+  const salvar = useSalvarValorAvaliacao();
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState("");
+  const definido = (valor ?? 0) > 0;
 
   function abrir() {
-    setVal(produto ? (produto.preco_centavos / 100).toFixed(2).replace(".", ",") : "");
+    setVal(definido ? ((valor ?? 0) / 100).toFixed(2).replace(".", ",") : "");
     setOpen(true);
   }
   function confirmar() {
-    salvar.mutate(
-      { produto: produto ?? null, precoCentavos: parseBRL(val) },
-      {
-        onSuccess: () => { toast.success("Preço da avaliação atualizado"); setOpen(false); },
-        onError: (e: Error) => toast.error(e.message),
-      },
-    );
+    salvar.mutate(parseBRL(val), {
+      onSuccess: () => { toast.success("Valor da avaliação atualizado"); setOpen(false); },
+      onError: (e: Error) => toast.error(e.message),
+    });
   }
 
   return (
@@ -243,11 +241,11 @@ function PrecoAvaliacaoCard({ isAdmin }: { isAdmin: boolean }) {
       <div className="flex items-center gap-4">
         <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 gold-border"><ClipboardCheck className="size-5 text-primary" /></div>
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Preço fixo da avaliação</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Valor da avaliação</p>
           {isLoading ? (
             <Skeleton className="mt-1 h-7 w-28" />
-          ) : produto ? (
-            <p className="font-display text-2xl gold-text">{BRL(produto.preco_centavos)}</p>
+          ) : definido ? (
+            <p className="font-display text-2xl gold-text">{BRL(valor ?? 0)}</p>
           ) : (
             <p className="mt-1 text-sm text-destructive">Não definido — as avaliações não geram lançamento</p>
           )}
@@ -255,20 +253,20 @@ function PrecoAvaliacaoCard({ isAdmin }: { isAdmin: boolean }) {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <p className="max-w-xs text-xs text-muted-foreground">
-          {produto || isLoading
-            ? "Toda avaliação salva lança este valor aqui automaticamente. Mudar o preço vale só pras próximas."
-            : isAdmin ? "Defina o preço pra cada avaliação passar a gerar o lançamento sozinha." : "Peça ao administrador pra definir o preço da avaliação."}
+          {definido || isLoading
+            ? "Toda avaliação salva grava este valor nela e lança aqui automaticamente. Mudar o valor vale só pras próximas."
+            : isAdmin ? "Defina o valor pra cada avaliação passar a gerar o lançamento sozinha." : "Peça ao administrador pra definir o valor da avaliação."}
         </p>
         {isAdmin ? (
           <Button variant="outline" onClick={abrir} className="gap-2 gold-border">
-            <Pencil className="size-4" /> {produto ? "Alterar preço" : "Definir preço"}
+            <Pencil className="size-4" /> {definido ? "Alterar valor" : "Definir valor"}
           </Button>
         ) : null}
       </div>
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8" onClick={() => setOpen(false)}>
           <div className="luxury-card w-full max-w-sm space-y-4 p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg">Preço da avaliação</h3>
+            <h3 className="font-display text-lg">Valor da avaliação</h3>
             <div>
               <Label>Valor por avaliação (R$)</Label>
               <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder="150,00" inputMode="decimal" />

@@ -66,7 +66,9 @@ export const qk = {
     all: ["produtos"] as const,
     ativos: ["produtos", "ativos"] as const, // catálogo ativo (nova venda)
     admin: ["produtos", "admin"] as const, // todos, p/ gestão
-    avaliacao: ["produtos", "avaliacao"] as const, // produto/preço fixo da avaliação
+  },
+  config: {
+    valorAvaliacao: ["config", "valor-avaliacao"] as const, // valor padrão de cada avaliação
   },
   dashboard: {
     all: ["dashboard"] as const,
