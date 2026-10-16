@@ -403,7 +403,7 @@ function ProdutosModal({ onClose }: { onClose: () => void }) {
   const upsert = useUpsertProduto();
   const del = useDeleteProduto();
   const [editing, setEditing] = useState<any>(null);
-  const blank: any = { nome: "", tipo: "plano", preco_centavos: 0, duracao_meses: 1, descricao: "", ativo: true };
+  const blank: any = { nome: "", tipo: "plano", preco_centavos: 0, duracao_meses: 1, ativo: true };
   const [form, setForm] = useState<any>(blank);
   const [valor, setValor] = useState("0,00");
 
@@ -439,13 +439,12 @@ function ProdutosModal({ onClose }: { onClose: () => void }) {
               <div className="col-span-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
               <div><Label>Tipo</Label>
                 <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className="h-9 w-full rounded-md bg-input/60 px-3 text-sm border border-input">
-                  <option value="plano">Plano</option><option value="avaliacao">Avaliação</option><option value="consultoria">Consultoria</option><option value="outro">Outro</option>
+                  <option value="plano">Plano</option><option value="avaliacao">Avaliação</option>
                 </select>
               </div>
               <div><Label>Duração (meses)</Label><Input type="number" min={0} value={form.duracao_meses ?? 0} onChange={(e) => setForm({ ...form, duracao_meses: parseInt(e.target.value) || 0 })} /></div>
               <div><Label>Preço (R$)</Label><Input value={valor} onChange={(e) => setValor(e.target.value)} /></div>
               <label className="flex items-end gap-2 text-sm"><input type="checkbox" checked={!!form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} /> Ativo</label>
-              <div className="col-span-2"><Label>Descrição</Label><Input value={form.descricao ?? ""} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
