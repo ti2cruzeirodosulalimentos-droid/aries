@@ -90,9 +90,23 @@ export type MetaInput = z.infer<typeof metaSchema>;
 // adicionais (perímetros bilaterais, dobras, VO2, neuromotores, postural e
 // resultados calculados) são montados pela tela e passam via .passthrough() —
 // validamos o crítico sem enrijecer o formulário completo.
+// A data da avaliação vira a data do lançamento no financeiro: um ano digitado errado (2000, 2062)
+// criaria receita no ano errado. Aceita de 2015 até amanhã (a folga cobre o fuso: o campo vem em UTC).
+const ymdLocal = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const dataAvaliacao = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data da avaliação é obrigatória")
+  .refine((s) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return true; // data vazia/malformada: quem reclama é o regex acima
+    const amanha = new Date();
+    amanha.setDate(amanha.getDate() + 1);
+    return s >= "2015-01-01" && s <= ymdLocal(amanha);
+  }, "Data da avaliação inválida — confira o ano (aceita de 2015 até hoje)");
+
 export const avaliacaoSchema = z
   .object({
-    data_avaliacao: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data da avaliação é obrigatória"),
+    data_avaliacao: dataAvaliacao,
     peso: reqNum(20, 350, "Peso (kg)"),
     altura: reqNum(1.0, 2.5, "Altura (m)"),
     idade: optNum(5, 120),
