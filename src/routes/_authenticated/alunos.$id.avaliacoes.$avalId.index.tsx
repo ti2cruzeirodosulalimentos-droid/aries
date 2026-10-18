@@ -112,9 +112,16 @@ function AvaliacaoDetail() {
         <h2 className="font-display text-2xl font-semibold">{protocoloLabel(a.protocolo)}</h2>
         {verFinanceiro ? (
           <p className="mt-1 text-xs text-muted-foreground">
-            {venda
-              ? <>Financeiro: <strong className={venda.status === "cancelado" ? "text-destructive" : "text-primary"}>{(venda.valor_centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong> lançado automaticamente{venda.status === "cancelado" ? " (cancelado)" : ""}</>
-              : "Financeiro: sem lançamento vinculado a esta avaliação"}
+            {a.coberta_por_plano
+              ? <>Financeiro: <strong className="text-emerald-400">incluída no plano do aluno</strong> — sem cobrança</>
+              : venda
+                ? <>Financeiro: <strong className={venda.status === "cancelado" ? "text-destructive" : "text-primary"}>{(venda.valor_centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>{" "}
+                  {venda.status === "cancelado"
+                    ? "(cancelado)"
+                    : venda.pagamento_status === "pago"
+                      ? `· pago${venda.pago_em ? ` em ${venda.pago_em.slice(8, 10)}/${venda.pago_em.slice(5, 7)}/${venda.pago_em.slice(0, 4)}` : ""}`
+                      : "· pendente (marque como pago em Financeiro → Pendentes)"}</>
+                : "Financeiro: sem lançamento vinculado a esta avaliação"}
           </p>
         ) : null}
       </div>

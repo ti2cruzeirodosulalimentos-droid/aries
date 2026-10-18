@@ -23,6 +23,8 @@ export const qk = {
     // Dados do aluno usados ao montar uma nova avaliação (nome, gênero, nascimento).
     alunoCtx: (alunoId: string) => ["avaliacoes", "aluno-ctx", alunoId] as const,
     ultima: (alunoId: string) => ["avaliacoes", "ultima", alunoId] as const,
+    // Plano do aluno cobre (ou não) a avaliação nesta data? (aviso antes de salvar)
+    cobertura: (alunoId: string, data: string) => ["avaliacoes", "cobertura", alunoId, data] as const,
   },
   treinos: {
     all: ["treinos"] as const,
@@ -52,10 +54,21 @@ export const qk = {
     templates: ["mensagens", "templates"] as const,
   },
   // Financeiro: vendas + metas mensais (prefixo comum p/ invalidação ampla).
+  financeiro: {
+    all: ["financeiro"] as const, // vendas, lançamentos avulsos, planos e metas de uma vez
+  },
   vendas: {
     all: ["financeiro", "vendas"] as const,
     list: (uid?: string) => ["financeiro", "vendas", uid] as const,
     byAvaliacao: (avalId: string) => ["financeiro", "vendas", "avaliacao", avalId] as const,
+  },
+  lancamentos: {
+    all: ["financeiro", "lancamentos"] as const, // lançamentos avulsos (entradas/saídas)
+    list: (uid?: string) => ["financeiro", "lancamentos", uid] as const,
+  },
+  assinaturas: {
+    all: ["financeiro", "assinaturas"] as const, // plano do aluno (gera mensalidade sozinho)
+    list: (uid?: string) => ["financeiro", "assinaturas", uid] as const,
   },
   metasFin: {
     all: ["financeiro", "meta"] as const,

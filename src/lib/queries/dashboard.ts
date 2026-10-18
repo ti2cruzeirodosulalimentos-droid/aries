@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { qk } from "@/lib/query-keys";
+import { hojeYmd, resumoFinanceiro, type LancamentoFin, type VendaFin } from "@/lib/financeiro-calc";
 
 /** Métricas do dashboard do personal/admin. */
 export function useDashboardPro(userId?: string) {
@@ -9,11 +10,15 @@ export function useDashboardPro(userId?: string) {
     enabled: !!userId,
     queryFn: async () => {
       const hoje = new Date();
+      const hojeStr = hojeYmd();
       const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
-      const inicioAno = new Date(hoje.getFullYear(), 0, 1).toISOString();
+      const inicioAno = `${hojeStr.slice(0, 4)}-01-01`;
+      // Receita = o que foi PAGO (por data de pagamento); o pendente entra em "a receber".
+      // Buscamos: tudo que está pendente + o que foi pago neste ano.
+      const filtroFin = `pagamento_status.eq.pendente,pago_em.gte.${inicioAno}`;
       const [
         { count: total }, { count: ativos }, { count: vencendo }, { count: novos },
-        { count: avaliacoesMes }, { data: vendasYr }, { data: meta }, { data: planosAtivos },
+        { count: avaliacoesMes }, { data: vendasFin }, { data: lancamentosFin }, { data: meta }, { data: planosAtivos },
         { data: proximos },
       ] = await Promise.all([
         supabase.from("alunos").select("*", { count: "exact", head: true }),
@@ -21,19 +26,21 @@ export function useDashboardPro(userId?: string) {
         supabase.from("alunos").select("*", { count: "exact", head: true }).eq("status", "vencendo"),
         supabase.from("alunos").select("*", { count: "exact", head: true }).gte("created_at", inicioMes),
         supabase.from("avaliacoes_fisicas").select("*", { count: "exact", head: true }).gte("created_at", inicioMes),
-        supabase.from("vendas").select("valor_centavos, data_venda, status").gte("data_venda", inicioAno.slice(0, 10)),
+        supabase.from("vendas").select("id, aluno_id, valor_centavos, data_venda, status, pagamento_status, pago_em").or(filtroFin),
+        // tabela nova (lançamentos avulsos): se ainda não existir, o painel segue sem ela
+        (supabase as any).from("lancamentos").select("id, tipo, valor_centavos, data_lancamento, pagamento_status, pago_em").or(filtroFin),
         supabase.from("metas_financeiras").select("valor_centavos").eq("mes", hoje.getMonth() + 1).eq("ano", hoje.getFullYear()).maybeSingle(),
-        supabase.from("vendas").select("*", { count: "exact", head: true }).gte("fim_vigencia", hoje.toISOString().slice(0, 10)).eq("status", "ativo"),
+        // alunos com plano em vigor (vários períodos seguidos do mesmo aluno contam uma vez)
+        supabase.from("vendas").select("aluno_id, produtos!inner(tipo)").eq("produtos.tipo", "plano").gte("fim_vigencia", hojeStr).eq("status", "ativo"),
         supabase.from("agenda_eventos").select("id, titulo, inicio, tipo, alunos(full_name)").gte("inicio", hoje.toISOString()).order("inicio").limit(5),
       ]);
 
-      const vendas = (vendasYr ?? []).filter((v) => v.status !== "cancelado");
-      const receitaAno = vendas.reduce((s, v) => s + v.valor_centavos, 0);
-      const receitaMes = vendas.filter((v) => v.data_venda >= inicioMes.slice(0, 10)).reduce((s, v) => s + v.valor_centavos, 0);
+      const fin = resumoFinanceiro((vendasFin ?? []) as VendaFin[], (lancamentosFin ?? []) as LancamentoFin[], hojeStr);
       return {
         total: total ?? 0, ativos: ativos ?? 0, vencendo: vencendo ?? 0, novos: novos ?? 0,
-        avaliacoesMes: avaliacoesMes ?? 0, planosAtivos: planosAtivos ?? 0,
-        receitaMes, receitaAno, meta: meta?.valor_centavos ?? 0,
+        avaliacoesMes: avaliacoesMes ?? 0, planosAtivos: new Set((planosAtivos ?? []).map((p) => p.aluno_id)).size,
+        receitaMes: fin.recebidoMes, receitaAno: fin.recebidoAno, meta: meta?.valor_centavos ?? 0,
+        aReceber: fin.aReceber, vencidasQtd: fin.vencidasQtd, vencidasValor: fin.vencidasValor,
         proximos: proximos ?? [],
       };
     },

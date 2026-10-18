@@ -81,10 +81,11 @@ export function useAvaliacaoDetail(alunoId: string, avalId: string) {
 }
 
 /**
- * Insere uma avaliação física já montada pela tela. O valor da avaliação (valor_centavos) e o
- * lançamento financeiro são gerados pelo próprio banco (gatilhos avaliacao_define_valor e
- * avaliacao_gera_venda) — a tela não envia valor; aqui só confirmamos o valor lançado
- * pra mostrar ao usuário (vendaCentavos = null quando nada foi lançado).
+ * Insere uma avaliação física já montada pela tela. O valor da avaliação (valor_centavos), a
+ * cobertura pelo plano do aluno e o lançamento financeiro (pendente) são decididos pelo próprio banco
+ * (gatilhos avaliacao_define_valor e avaliacao_gera_venda) — a tela não envia valor; aqui só
+ * confirmamos o resultado pra mostrar ao usuário: `coberta` = incluída no plano (sem cobrança),
+ * `vendaCentavos` = valor da cobrança gerada (null quando nada foi lançado).
  */
 export function useCreateAvaliacao(alunoId: string) {
   const qc = useQueryClient();
@@ -93,22 +94,24 @@ export function useCreateAvaliacao(alunoId: string) {
       const { data, error } = await supabase
         .from("avaliacoes_fisicas")
         .insert(payload)
-        .select("id")
+        .select("id, coberta_por_plano")
         .single();
       if (error) throw error;
       const id = data.id as string;
+      const coberta = data.coberta_por_plano === true;
+      if (coberta) return { id, coberta, vendaCentavos: null as number | null };
       // A confirmação é só informativa: se falhar, a avaliação (já salva) não pode falhar junto.
       const { data: venda } = await (supabase as any)
         .from("vendas")
         .select("valor_centavos")
         .eq("avaliacao_id", id)
         .maybeSingle();
-      return { id, vendaCentavos: (venda?.valor_centavos ?? null) as number | null };
+      return { id, coberta, vendaCentavos: (venda?.valor_centavos ?? null) as number | null };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.avaliacoes.all });
       qc.invalidateQueries({ queryKey: qk.evolucao.byAluno(alunoId) });
-      qc.invalidateQueries({ queryKey: qk.vendas.all });
+      qc.invalidateQueries({ queryKey: qk.financeiro.all });
       qc.invalidateQueries({ queryKey: qk.dashboard.all });
     },
   });

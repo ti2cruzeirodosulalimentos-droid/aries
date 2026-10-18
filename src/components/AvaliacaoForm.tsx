@@ -3,7 +3,8 @@ import { useMemo, useState, useEffect } from "react";
 import { Save, Loader2, Calculator, ChevronRight, ChevronLeft, Activity, Ruler, HeartPulse, Dumbbell, Camera, PersonStanding, Settings2, Check, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useAlunoParaAvaliacao, useAvaliacaoDetail, useCreateAvaliacao, useUpdateAvaliacao, useUltimaAvaliacao } from "@/lib/queries/avaliacoes";
-import { useValorAvaliacao } from "@/lib/queries/financeiro";
+import { useCoberturaAvaliacao, useValorAvaliacao } from "@/lib/queries/financeiro";
+import { fmtData } from "@/lib/financeiro-calc";
 import { useAuth } from "@/lib/auth";
 import { avaliacaoSchema, validate } from "@/lib/validation/schemas";
 import { Input } from "@/components/ui/input";
@@ -130,6 +131,10 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
   const { data: valorPadrao, isLoading: carregandoValor } = useValorAvaliacao();
   // Valor mostrado no campo: ao criar, o padrão; ao editar, o que ficou gravado na avaliação.
   const valorAval = isEdit ? (existing?.aval?.valor_centavos ?? null) : (valorPadrao ?? null);
+  // O plano do aluno inclui esta avaliação? (ao criar, o banco decide ao salvar; aqui só avisamos antes)
+  const { data: cobertura } = useCoberturaAvaliacao(aluno_id, v.data_avaliacao ?? "", !isEdit);
+  const coberta = isEdit ? existing?.aval?.coberta_por_plano === true : cobertura?.coberta === true;
+  const cadencia = (n?: number | null) => (n === 1 ? "1 avaliação por mês" : `1 avaliação a cada ${n} meses`);
 
   // Modo criação: pré-preenche gênero/idade a partir do cadastro do aluno.
   useEffect(() => {
@@ -271,9 +276,11 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
       });
     } else {
       create.mutate(payload, {
-        onSuccess: ({ id, vendaCentavos }) => {
-          if (vendaCentavos != null) {
-            toast.success(`Avaliação salva · ${BRL(vendaCentavos)} lançado no financeiro`);
+        onSuccess: ({ id, vendaCentavos, coberta: incluida }) => {
+          if (incluida) {
+            toast.success("Avaliação salva · incluída no plano (sem cobrança)");
+          } else if (vendaCentavos != null) {
+            toast.success(`Avaliação salva · ${BRL(vendaCentavos)} lançado em Pendentes`);
           } else {
             toast.warning("Avaliação salva, mas nenhum lançamento foi gerado no financeiro. Defina o valor da avaliação na tela Financeiro.", { duration: 9000 });
           }
@@ -367,14 +374,31 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
           </div>
         ) : null}
 
-        {valorAval != null && valorAval > 0 ? (
+        {coberta ? (
+          <div className="luxury-card p-3 flex items-start gap-3 border-emerald-500/30">
+            <Wallet className="size-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-emerald-300">
+                Incluída no plano{!isEdit && cobertura?.plano ? ` ${cobertura.plano}` : ""} — sem cobrança
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {!isEdit && cobertura?.a_cada_meses ? `O plano do aluno inclui ${cadencia(cobertura.a_cada_meses)}. ` : ""}
+                Esta avaliação não gera lançamento no financeiro.
+              </p>
+            </div>
+          </div>
+        ) : valorAval != null && valorAval > 0 ? (
           <div className="luxury-card p-3 space-y-2 border-primary/30">
             <Label className="flex items-center gap-2 text-xs uppercase tracking-wider text-primary">
               <Wallet className="size-4" /> Valor da avaliação
             </Label>
             <Input readOnly value={BRL(valorAval)} />
             <p className="text-xs text-muted-foreground">
-              {isEdit ? "Valor registrado nesta avaliação." : "Lançado automaticamente no financeiro ao salvar."}
+              {isEdit
+                ? "Valor registrado nesta avaliação."
+                : cobertura?.motivo === "cota_usada"
+                  ? `O plano ${cobertura.plano ?? ""} inclui ${cadencia(cobertura.a_cada_meses)} e a cota deste período já foi usada — esta será cobrada (fica em Pendentes).${cobertura.proxima_livre ? ` Próxima inclusa a partir de ${fmtData(cobertura.proxima_livre)}.` : ""}`
+                  : "Entra em Pendentes no financeiro ao salvar; você marca como pago quando receber."}
             </p>
           </div>
         ) : !isEdit && !carregandoValor ? (

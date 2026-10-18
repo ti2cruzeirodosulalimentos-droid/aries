@@ -5,6 +5,7 @@ import { useMeusPagamentos } from "@/lib/queries/portal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { RowsSkeleton } from "@/components/ui/list-skeleton";
+import { fmtData, formaLabel } from "@/lib/financeiro-calc";
 
 export const Route = createFileRoute("/_authenticated/meus-pagamentos")({
   head: () => ({ meta: [{ title: "Meus Pagamentos — ARIÉS" }] }),
@@ -36,9 +37,17 @@ function MeusPagamentos() {
               <div>
                 <div className="font-medium">{(v.produtos as { nome?: string } | null)?.nome ?? "—"}</div>
                 <div className="text-xs text-muted-foreground">
-                  {new Date(v.data_venda).toLocaleDateString("pt-BR")}
-                  {v.fim_vigencia && ` → ${new Date(v.fim_vigencia).toLocaleDateString("pt-BR")}`}
-                  · {v.forma_pagamento ?? "—"} · {v.status}
+                  {fmtData(v.data_venda)}
+                  {v.fim_vigencia && ` → ${fmtData(v.fim_vigencia)}`}
+                  {v.pagamento_status === "pago" && v.forma_pagamento ? ` · ${formaLabel(v.forma_pagamento)}` : ""}
+                  {" · "}
+                  {v.status === "cancelado" ? (
+                    <span>Cancelado</span>
+                  ) : v.pagamento_status === "pendente" ? (
+                    <span className="text-amber-300">Pendente · vence {fmtData(v.data_venda)}</span>
+                  ) : (
+                    <span className="text-emerald-400">Pago{v.pago_em ? ` em ${fmtData(v.pago_em)}` : ""}</span>
+                  )}
                 </div>
               </div>
               <div className="font-display text-lg gold-text">{BRL(v.valor_centavos)}</div>

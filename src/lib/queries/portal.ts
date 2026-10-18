@@ -45,7 +45,7 @@ export function useMeusPagamentos(uid?: string | null) {
     queryFn: async () => {
       const { data } = await supabase
         .from("vendas")
-        .select("id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, produtos(nome, tipo)")
+        .select("id, valor_centavos, data_venda, fim_vigencia, status, forma_pagamento, pagamento_status, pago_em, produtos(nome, tipo)")
         // Lançamentos gerados sozinhos pelas avaliações são controle interno do personal — o aluno só vê o que
         // foi registrado à mão (planos, vendas avulsas). Dois filtros: avaliacao_id preenchido, e a marca no texto,
         // porque ao EXCLUIR a avaliação o banco cancela o lançamento e zera o vínculo (a marca continua).

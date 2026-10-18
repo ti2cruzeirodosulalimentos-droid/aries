@@ -406,6 +406,8 @@ export type Database = {
           rcq: number | null
           rcq_classificacao: string | null
           updated_at: string
+          assinatura_id: string | null
+          coberta_por_plano: boolean
           valor_centavos: number | null
           vo2_classificacao: string | null
           vo2_distancia: number | null
@@ -482,6 +484,8 @@ export type Database = {
           rcq?: number | null
           rcq_classificacao?: string | null
           updated_at?: string
+          assinatura_id?: string | null
+          coberta_por_plano?: boolean
           valor_centavos?: number | null
           vo2_classificacao?: string | null
           vo2_distancia?: number | null
@@ -558,6 +562,8 @@ export type Database = {
           rcq?: number | null
           rcq_classificacao?: string | null
           updated_at?: string
+          assinatura_id?: string | null
+          coberta_por_plano?: boolean
           valor_centavos?: number | null
           vo2_classificacao?: string | null
           vo2_distancia?: number | null
@@ -1131,6 +1137,7 @@ export type Database = {
       produtos: {
         Row: {
           ativo: boolean
+          avaliacao_a_cada_meses: number | null
           created_at: string
           duracao_meses: number
           id: string
@@ -1141,6 +1148,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          avaliacao_a_cada_meses?: number | null
           created_at?: string
           duracao_meses?: number
           id?: string
@@ -1151,6 +1159,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          avaliacao_a_cada_meses?: number | null
           created_at?: string
           duracao_meses?: number
           id?: string
@@ -1399,7 +1408,9 @@ export type Database = {
       vendas: {
         Row: {
           aluno_id: string
+          assinatura_id: string | null
           avaliacao_id: string | null
+          competencia: string | null
           created_at: string
           data_venda: string
           fim_vigencia: string | null
@@ -1407,6 +1418,8 @@ export type Database = {
           id: string
           inicio_vigencia: string
           observacao: string | null
+          pagamento_status: string
+          pago_em: string | null
           personal_id: string
           produto_id: string
           status: string
@@ -1415,7 +1428,9 @@ export type Database = {
         }
         Insert: {
           aluno_id: string
+          assinatura_id?: string | null
           avaliacao_id?: string | null
+          competencia?: string | null
           created_at?: string
           data_venda?: string
           fim_vigencia?: string | null
@@ -1423,6 +1438,8 @@ export type Database = {
           id?: string
           inicio_vigencia?: string
           observacao?: string | null
+          pagamento_status?: string
+          pago_em?: string | null
           personal_id: string
           produto_id: string
           status?: string
@@ -1431,7 +1448,9 @@ export type Database = {
         }
         Update: {
           aluno_id?: string
+          assinatura_id?: string | null
           avaliacao_id?: string | null
+          competencia?: string | null
           created_at?: string
           data_venda?: string
           fim_vigencia?: string | null
@@ -1439,6 +1458,8 @@ export type Database = {
           id?: string
           inicio_vigencia?: string
           observacao?: string | null
+          pagamento_status?: string
+          pago_em?: string | null
           personal_id?: string
           produto_id?: string
           status?: string

@@ -3,6 +3,7 @@ import { Users, Activity, TrendingUp, Clock, Plus, DollarSign, Calendar, Target,
 import { useAuth } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions";
 import { useDashboardAluno, useDashboardPro } from "@/lib/queries/dashboard";
+import { useGerarMensalidades } from "@/lib/queries/financeiro";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatsSkeleton } from "@/components/ui/list-skeleton";
@@ -21,6 +22,8 @@ function Dashboard() {
 }
 
 function DashboardPro({ userId, role }: { userId?: string; role: string }) {
+  // cria as mensalidades do mês que ainda não existem, pra "a receber" já estar certo ao abrir
+  useGerarMensalidades(!!userId);
   const { data: stats, isLoading, isError, refetch } = useDashboardPro(userId);
 
   const pctMeta = stats?.meta ? Math.min(100, Math.round((stats.receitaMes / stats.meta) * 100)) : 0;
@@ -78,10 +81,19 @@ function DashboardPro({ userId, role }: { userId?: string; role: string }) {
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="luxury-card p-5 lg:col-span-2">
           <h2 className="font-display text-lg">Meta financeira</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{BRL(stats?.receitaMes ?? 0)} / {BRL(stats?.meta ?? 0)} · {pctMeta}%</p>
+          <p className="mt-1 text-sm text-muted-foreground">{BRL(stats?.receitaMes ?? 0)} recebidos / {BRL(stats?.meta ?? 0)} · {pctMeta}%</p>
           <div className="mt-3 h-3 w-full rounded-full bg-secondary overflow-hidden">
             <div className="h-full bg-primary transition-all" style={{ width: `${pctMeta}%` }} />
           </div>
+          {(stats?.aReceber ?? 0) > 0 ? (
+            <p className="mt-3 text-sm">
+              <span className="text-muted-foreground">A receber: </span>
+              <span className="font-medium gold-text">{BRL(stats?.aReceber ?? 0)}</span>
+              {(stats?.vencidasQtd ?? 0) > 0 ? (
+                <span className="ml-2 text-destructive">· {stats?.vencidasQtd} {stats?.vencidasQtd === 1 ? "vencida" : "vencidas"} ({BRL(stats?.vencidasValor ?? 0)})</span>
+              ) : null}
+            </p>
+          ) : null}
           <Link to="/financeiro" className="mt-4 inline-block text-xs text-primary hover:underline">Abrir Financeiro →</Link>
         </div>
         <div className="luxury-card p-5">
