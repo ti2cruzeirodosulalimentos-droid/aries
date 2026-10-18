@@ -49,7 +49,8 @@ export function useDashboardAluno(userId?: string) {
       const [{ data: aluno }, { data: prox }, { data: pgto }, { data: treinos }] = await Promise.all([
         supabase.from("alunos").select("full_name, goal, plan_expires_at").eq("user_id", userId!).maybeSingle(),
         supabase.from("agenda_eventos").select("titulo, inicio, tipo").gte("inicio", new Date().toISOString()).order("inicio").limit(3),
-        supabase.from("vendas").select("produtos(nome), fim_vigencia, status").eq("status", "ativo").order("data_venda", { ascending: false }).limit(1),
+        // "Plano atual" = venda ativa mais recente de PLANO: avaliações (lançadas automaticamente) não podem ocupar o lugar dele.
+        supabase.from("vendas").select("fim_vigencia, status, produtos!inner(nome, tipo)").eq("status", "ativo").eq("produtos.tipo", "plano").order("data_venda", { ascending: false }).limit(1),
         supabase.from("treinos").select("id, nome").order("created_at", { ascending: false }).limit(5),
       ]);
       return { aluno, prox: prox ?? [], pgto: pgto?.[0] ?? null, treinos: treinos ?? [] };
