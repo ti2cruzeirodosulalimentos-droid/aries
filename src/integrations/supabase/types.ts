@@ -1399,6 +1399,7 @@ export type Database = {
       vendas: {
         Row: {
           aluno_id: string
+          avaliacao_id: string | null
           created_at: string
           data_venda: string
           fim_vigencia: string | null
@@ -1414,6 +1415,7 @@ export type Database = {
         }
         Insert: {
           aluno_id: string
+          avaliacao_id?: string | null
           created_at?: string
           data_venda?: string
           fim_vigencia?: string | null
@@ -1429,6 +1431,7 @@ export type Database = {
         }
         Update: {
           aluno_id?: string
+          avaliacao_id?: string | null
           created_at?: string
           data_venda?: string
           fim_vigencia?: string | null
@@ -1448,6 +1451,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: true
+            referencedRelation: "avaliacoes_fisicas"
             referencedColumns: ["id"]
           },
           {
