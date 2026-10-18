@@ -149,8 +149,6 @@ function AvaliacaoDetail() {
           <FieldRO label="Altura" value={fmt(a.altura, " m")} />
           <FieldRO label="Idade" value={a.idade ? `${a.idade} anos` : "—"} />
           <FieldRO label="Gênero" value={a.genero ?? "—"} />
-          <FieldRO label="PA" value={a.pressao_sistolica && a.pressao_diastolica ? `${a.pressao_sistolica}/${a.pressao_diastolica}` : "—"} />
-          <FieldRO label="FC Repouso" value={a.fc_repouso ? `${a.fc_repouso} bpm` : "—"} />
           <FieldRO label="Densidade" value={a.densidade_corporal ? String(a.densidade_corporal) : "—"} />
         </Grid4>
       </Card>

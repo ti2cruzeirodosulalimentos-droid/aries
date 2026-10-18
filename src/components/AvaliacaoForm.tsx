@@ -66,7 +66,7 @@ const FIELD_VIEW: Record<string, SubView> = {
 // Campos numéricos vindos do banco — normalizados com Number() ao carregar para edição,
 // pois calcularAvaliacao() exige typeof "number" (Supabase pode retornar numeric como string).
 const NUMERIC_KEYS = [
-  "peso", "altura", "idade", "pressao_sistolica", "pressao_diastolica", "fc_repouso",
+  "peso", "altura", "idade",
   ...CIRC.map(([k]) => k),
   ...CIRC_BILAT.flatMap(([k]) => [`circ_${k}_d`, `circ_${k}_e`]),
   "circ_braco_d", "circ_braco_e", "circ_antebraco_d", "circ_antebraco_e", "circ_coxa_d", "circ_coxa_e",
@@ -232,7 +232,6 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
       data_avaliacao: v.data_avaliacao,
       protocolo: v.protocolo,
       peso: v.peso, altura: v.altura, idade: v.idade, genero: v.genero,
-      pressao_sistolica: v.pressao_sistolica, pressao_diastolica: v.pressao_diastolica, fc_repouso: v.fc_repouso,
       ...Object.fromEntries(CIRC.map(([k]) => [k, v[k] ?? null])),
       ...bilatPayload,
       ...legacy,
@@ -435,7 +434,7 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
 
       {view === "composicao" && (
         <>
-          <Section title="Antropometria & Sinais Vitais">
+          <Section title="Antropometria">
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               <Field label="Peso (kg) *" hint={prev("peso")}><NumInput value={v.peso} onChange={num("peso")} step="0.1" /></Field>
               <Field label="Altura (m ou cm) *" hint={prev("altura")}>
@@ -454,9 +453,6 @@ export function AvaliacaoForm({ alunoId: aluno_id, avalId }: AvaliacaoFormProps)
                   }}
                 />
               </Field>
-              <Field label="PA Sistólica" hint={prev("pressao_sistolica")}><NumInput value={v.pressao_sistolica} onChange={num("pressao_sistolica")} /></Field>
-              <Field label="PA Diastólica" hint={prev("pressao_diastolica")}><NumInput value={v.pressao_diastolica} onChange={num("pressao_diastolica")} /></Field>
-              <Field label="FC Repouso (bpm)" hint={prev("fc_repouso")}><NumInput value={v.fc_repouso} onChange={num("fc_repouso")} /></Field>
             </div>
             {v.altura != null && (v.altura < 1 || v.altura > 2.4) ? (
               <p className="text-xs text-destructive mt-2">Altura fora da faixa esperada (1.00–2.40 m). Confira o valor.</p>

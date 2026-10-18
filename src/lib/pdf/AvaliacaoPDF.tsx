@@ -222,14 +222,11 @@ export function AvaliacaoPDF({ aluno, avaliacao: a, fotoUrl, personal, tema = "e
         <Text style={s.sectionTitle}>DADOS GERAIS</Text>
         <View style={s.card}>
           <View style={s.row}>
-            <Field label="Peso" value={fmt(a.peso, " kg")} width="cell4" />
-            <Field label="Altura" value={fmt(a.altura, " m")} width="cell4" />
-            <Field label="Idade" value={fmtInt(a.idade, " anos")} width="cell4" />
-            <Field label="Gênero" value={a.genero ?? "—"} width="cell4" />
-            <Field label="PA Sistólica" value={fmtInt(a.pressao_sistolica, " mmHg")} width="cell4" />
-            <Field label="PA Diastólica" value={fmtInt(a.pressao_diastolica, " mmHg")} width="cell4" />
-            <Field label="FC Repouso" value={fmtInt(a.fc_repouso, " bpm")} width="cell4" />
-            <Field label="IMC" value={a.imc ? `${fmt(a.imc)} — ${a.imc_classificacao ?? ""}` : "—"} width="cell4" />
+            <Field label="Peso" value={fmt(a.peso, " kg")} width="cell3" />
+            <Field label="Altura" value={fmt(a.altura, " m")} width="cell3" />
+            <Field label="Idade" value={fmtInt(a.idade, " anos")} width="cell3" />
+            <Field label="Gênero" value={a.genero ?? "—"} width="cell3" />
+            <Field label="IMC" value={a.imc ? `${fmt(a.imc)} — ${a.imc_classificacao ?? ""}` : "—"} width="cell3" />
           </View>
         </View>
 
